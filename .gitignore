@@ -1,0 +1,16 @@
+node_modules/
+__pycache__/
+*.py[cod]
+*.tgz
+coverage/
+runtime-status.json
+runtime-status.json.tmp
+.source-baseline.json
+verification/
+artifacts/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db

@@ -1,0 +1,66 @@
+{
+  "name": "dsh-native-taskbar-badge",
+  "version": "0.1.0",
+  "description": "Windows native COM taskbar number overlay for DSH Desktop main sessions; no toast, sound, focus stealing or ASAR changes.",
+  "license": "MIT",
+  "author": "O-OII contributors",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/O-OII/dsh-native-taskbar-badge.git"
+  },
+  "bugs": {
+    "url": "https://github.com/O-OII/dsh-native-taskbar-badge/issues"
+  },
+  "homepage": "https://github.com/O-OII/dsh-native-taskbar-badge#readme",
+  "keywords": [
+    "dsh",
+    "windows",
+    "taskbar",
+    "badge",
+    "accessibility",
+    "dsh-plugin"
+  ],
+  "exports": {
+    ".": "./index.mjs",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
+  },
+  "files": [
+    "index.mjs",
+    "controller.mjs",
+    "state.mjs",
+    "projection.mjs",
+    "paths.mjs",
+    "config.mjs",
+    "i18n.mjs",
+    "native.py",
+    "assets/badges/*.ico",
+    "locale/en.json",
+    "locale/zh.json",
+    "icon.svg",
+    "cordis.patch.yml",
+    "README.md",
+    "README.zh-CN.md",
+    "LICENSE",
+    "CHANGELOG.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "ASSET-PROVENANCE.md",
+    "docs/images"
+  ],
+  "scripts": {
+    "test": "node --experimental-vm-modules --test test/*.test.mjs",
+    "test:python": "python -B -m unittest discover -s test -p test_*.py -v",
+    "assets": "python -B tools/generate-assets.py"
+  },
+  "engines": {
+    "node": ">=22",
+    "dsh": ">=0.2.1-rc.2 <0.3.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}

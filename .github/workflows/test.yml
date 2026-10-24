@@ -1,0 +1,38 @@
+name: Offline fake regression tests
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fake-tests:
+    name: Fake only (${{ matrix.os }}, Node ${{ matrix.node }}, Python ${{ matrix.python }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        node: ['22', '24']
+        python: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      # Setup actions provision CI runtimes; project tests have no network/dependency installs.
+      # A Windows runner is NOT live Windows taskbar coverage. Never invoke native.py here.
+      - name: Node fake host, reducer, path and localization tests
+        run: node --experimental-vm-modules --test test/*.test.mjs
+      - name: Python fake Win32 and worker tests
+        run: python -B -m unittest discover -s test -p test_*.py -v
+      - name: Regenerate original font-free assets offline
+        run: python -B tools/generate-assets.py
+      - name: Verify deterministic committed assets
+        run: git diff --exit-code -- assets/badges

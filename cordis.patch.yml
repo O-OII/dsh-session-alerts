@@ -1,0 +1,11 @@
+- insert:
+    - id: native-taskbar-badge
+      name: 'dsh-native-taskbar-badge'
+      config:
+        enabled: true
+        desktopExecutable: ''
+        pythonPath: ''
+        notifyOnError: true
+        notifyOnWaiting: true
+        notifyOnGoalRounds: false
+        language: auto

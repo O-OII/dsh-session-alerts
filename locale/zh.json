@@ -1,0 +1,31 @@
+{
+  "meta": {
+    "title": "原生任务栏数字角标",
+    "description": "DSH 在后台时，按待查看的主会话数显示 Windows 原生数字覆盖图标；切回 DSH 清除全部计数。不弹窗、不响铃、不抢焦点。"
+  },
+  "config": {
+    "enabled": { "title": "启用", "description": "启用 Windows 辅助进程；停用时清除覆盖图标并退出辅助进程。" },
+    "desktopExecutable": { "title": "DSH 桌面程序路径（Windows）", "description": "精确匹配的 DSH 桌面 .exe 的 Windows 绝对路径。留空依次使用 DSH_DESKTOP_EXECUTABLE、当前 DSH 程序或官方 Host 安装位置；不猜窗口标题。" },
+    "pythonPath": { "title": "Python 程序路径（Windows）", "description": "已有 Python 3.10+ python.exe 的 Windows 绝对路径。留空依次使用 DSH_PYTHON_PATH、DSH_HOME 的官方主运行时或桌面内置 Python；不会把 Electron 当 Python，也不会安装依赖。" },
+    "notifyOnError": { "title": "计入异常结束", "description": "计入错误、阻塞及输出超限，不计用户取消或历史恢复标记。" },
+    "notifyOnWaiting": { "title": "计入待输入请求", "description": "计入待审批及 ask_user_question；一个主会话内多个请求仍只计一次。" },
+    "notifyOnGoalRounds": { "title": "计入目标中间回合", "description": "默认关闭：过滤仍在自动推进的活动目标已完成中间回合；目标最终完成及失败仍可计数。" },
+    "language": { "title": "诊断语言", "description": "auto、en 或 zh。auto 读取 LC_ALL、LC_MESSAGES 或 LANG，否则回退英文；设置元数据由宿主界面语言决定。" }
+  },
+  "native": {
+    "ambiguous": "存在多个匹配的 DSH 窗口：为避免误放角标，拒绝猜测目标",
+    "attention": "DSH：{count} 个主会话待查看",
+    "platform": "原生辅助进程需要带 Explorer 的 Windows 10/11；其他系统请仅运行 fake 测试。",
+    "com": "ITaskbarList3 初始化失败，请确认 Explorer 在同一交互用户会话中运行：{detail}"
+  },
+  "messages": {
+    "configuration": "{field}：请在插件设置中填写现有文件的 Windows 绝对路径。desktopExecutable 应为实际 DSH 桌面 .exe；pythonPath 应为 Python 3.10+ 的 python.exe，而非 Electron/node/pythonw。留空启用有边界的官方运行时发现；本次未启动辅助进程。",
+    "diagnostics": "任务栏角标：无法写入可选诊断文件：{detail}",
+    "pipes": "子进程服务未提供请求的 stdin/stdout 通信管道。",
+    "buffer": "原生辅助进程响应超出安全缓冲区大小。",
+    "response": "无效的原生辅助进程响应：{detail}",
+    "timeout": "原生辅助进程就绪超时。请确认 pythonPath 指向 Python 3.10+，且当前用户有权运行辅助进程。",
+    "exit": "原生辅助进程已退出（{code}）；最多重试三次后，请停用再启用插件重试。",
+    "native": "原生辅助进程错误：{detail}"
+  }
+}
