@@ -30,6 +30,8 @@ jobs:
       # A Windows runner is NOT live Windows taskbar coverage. Never invoke native.py here.
       - name: Node fake host, reducer, path and localization tests
         run: node --experimental-vm-modules --test test/*.test.mjs
+      - name: Real offline package assertions
+        run: npm run test:pack
       - name: Python fake Win32 and worker tests
         run: python -B -m unittest discover -s test -p test_*.py -v
       - name: Regenerate original font-free assets offline

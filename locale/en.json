@@ -10,12 +10,13 @@
     "notifyOnError": { "title": "Count unsuccessful endings", "description": "Include errors, blocked turns and token-limit endings, but not user cancellation or history markers." },
     "notifyOnWaiting": { "title": "Count input requests", "description": "Include pending approvals and ask_user_question. Multiple requests in one main session count once." },
     "notifyOnGoalRounds": { "title": "Count intermediate goal rounds", "description": "Off by default: completed rounds of an active automatically continuing goal are suppressed. Final goal completion and failures can still count." },
-    "language": { "title": "Diagnostic language", "description": "auto, en or zh. Auto uses LC_ALL, LC_MESSAGES or LANG when available, otherwise English. Settings metadata follows the host UI language." }
+    "language": { "title": "Diagnostic language", "description": "Defaults to Simplified Chinese (zh); en and explicit auto remain available. Auto reads LC_ALL, LC_MESSAGES, then LANG; absent/unsupported languages fall back to Simplified Chinese. Settings metadata follows a supported host UI language, otherwise Chinese." }
   },
   "native": {
     "ambiguous": "Multiple DSH windows: refusing ambiguous badge placement",
     "attention": "DSH: {count} main conversations need attention",
     "platform": "This native helper requires Windows 10/11 with Explorer; use fake tests on other operating systems.",
+    "overlay": "SetOverlayIcon failed: {detail}",
     "com": "ITaskbarList3 initialization failed; check Explorer is running in the same interactive user session: {detail}"
   },
   "messages": {

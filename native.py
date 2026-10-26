@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import queue
+import re
 import sys
 import threading
 import time
@@ -22,13 +23,19 @@ class GUID(C.Structure):
 _locales = {language: json.loads((Path(__file__).resolve().parent / 'locale' / (language + '.json')).read_text(encoding='utf-8'))['native'] for language in ('en', 'zh')}
 
 
+def language_of(value='zh', env=None):
+    env = os.environ if env is None else env
+    selected = (env.get('LC_ALL') or env.get('LC_MESSAGES') or env.get('LANG') or 'zh') if value == 'auto' else value
+    return 'en' if re.match(r'^en(?:[-_.]|$)', str(selected), re.I) else 'zh'
+
+
 def native_message(language, key, **values):
-    return _locales.get(language, _locales['en']).get(key, _locales['en'].get(key, key)).format(**values)
+    return _locales[language_of(language)].get(key, _locales['zh'].get(key, key)).format(**values)
 
 
 class Taskbar:
-    def __init__(self, executable, assets, locale='en'):
-        self.locale = locale if locale in _locales else 'en'
+    def __init__(self, executable, assets, locale='zh'):
+        self.locale = language_of(locale)
         self.executable = os.path.normcase(os.path.realpath(executable))
         self.assets = Path(assets).resolve()
         self.user = C.WinDLL('user32', use_last_error=True)
@@ -99,7 +106,7 @@ class Taskbar:
         self.last_count = count
         windows = self.windows()
         if len(windows) > 1:
-            raise RuntimeError(native_message(getattr(self, 'locale', 'en'), 'ambiguous'))
+            raise RuntimeError(native_message(getattr(self, 'locale', 'zh'), 'ambiguous'))
         self.window = windows[0] if windows else None
         if self.window is None:
             return {'type': 'applied', 'count': count, 'hwnd': None, 'visible': False, 'reason': 'no-taskbar-window'}
@@ -109,8 +116,8 @@ class Taskbar:
                 name = str(count) if count < 100 else '99plus'
                 icon = self.user.LoadImageW(None, str(self.assets / (name + '.ico')), 1, 32, 32, 0x10)
                 if not icon: raise C.WinError(C.get_last_error())
-            hr = self._set(self.obj, self.window, icon, native_message(getattr(self, 'locale', 'en'), 'attention', count=count) if count else '')
-            if hr < 0: raise OSError(f'SetOverlayIcon failed: {hr:#x}')
+            hr = self._set(self.obj, self.window, icon, native_message(getattr(self, 'locale', 'zh'), 'attention', count=count) if count else '')
+            if hr < 0: raise OSError(native_message(getattr(self, 'locale', 'zh'), 'overlay', detail=f'{hr:#x}'))
             self.last_count = count
             return {'type': 'applied', 'count': count, 'hwnd': self.window, 'hresult': hr, 'visible': True}
         finally:
@@ -189,10 +196,11 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--executable', required=True)
     parser.add_argument('--assets', default=str(Path(__file__).resolve().parent / 'assets' / 'badges'))
-    parser.add_argument('--locale', choices=('en', 'zh'), default='en')
+    parser.add_argument('--locale', default='zh')
     parser.add_argument('--probe', type=int)
     parser.add_argument('--seconds', type=float, default=8)
     args = parser.parse_args()
+    args.locale = language_of(args.locale)
     if sys.platform != 'win32':
         raise RuntimeError(native_message(args.locale, 'platform'))
     taskbar = Taskbar(args.executable, args.assets, args.locale)

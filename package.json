@@ -1,7 +1,7 @@
 {
   "name": "dsh-native-taskbar-badge",
-  "version": "0.1.0",
-  "description": "Windows native COM taskbar number overlay for DSH Desktop main sessions; no toast, sound, focus stealing or ASAR changes.",
+  "version": "0.1.1",
+  "description": "为 DSH Desktop 主会话显示 Windows 原生 COM 任务栏数字角标；不弹窗、不响铃、不抢焦点、不修改 ASAR。",
   "license": "MIT",
   "author": "O-OII contributors",
   "type": "module",
@@ -52,6 +52,7 @@
   "scripts": {
     "test": "node --experimental-vm-modules --test test/*.test.mjs",
     "test:python": "python -B -m unittest discover -s test -p test_*.py -v",
+    "test:pack": "node --test tools/pack.test.mjs",
     "assets": "python -B tools/generate-assets.py"
   },
   "engines": {

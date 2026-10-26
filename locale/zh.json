@@ -10,12 +10,13 @@
     "notifyOnError": { "title": "计入异常结束", "description": "计入错误、阻塞及输出超限，不计用户取消或历史恢复标记。" },
     "notifyOnWaiting": { "title": "计入待输入请求", "description": "计入待审批及 ask_user_question；一个主会话内多个请求仍只计一次。" },
     "notifyOnGoalRounds": { "title": "计入目标中间回合", "description": "默认关闭：过滤仍在自动推进的活动目标已完成中间回合；目标最终完成及失败仍可计数。" },
-    "language": { "title": "诊断语言", "description": "auto、en 或 zh。auto 读取 LC_ALL、LC_MESSAGES 或 LANG，否则回退英文；设置元数据由宿主界面语言决定。" }
+    "language": { "title": "诊断语言", "description": "默认简体中文（zh），保留 en 和显式 auto。auto 依次读取 LC_ALL、LC_MESSAGES、LANG；缺失或不支持的语言回退简体中文。设置元数据跟随受支持的宿主界面语言，否则使用中文。" }
   },
   "native": {
     "ambiguous": "存在多个匹配的 DSH 窗口：为避免误放角标，拒绝猜测目标",
     "attention": "DSH：{count} 个主会话待查看",
     "platform": "原生辅助进程需要带 Explorer 的 Windows 10/11；其他系统请仅运行 fake 测试。",
+    "overlay": "SetOverlayIcon 设置覆盖图标失败：{detail}",
     "com": "ITaskbarList3 初始化失败，请确认 Explorer 在同一交互用户会话中运行：{detail}"
   },
   "messages": {

@@ -232,6 +232,12 @@ class NativeTaskbarTests(unittest.TestCase):
         self.assertEqual(Path(taskbar.user.LoadImageW.call_args.args[1]).name, '42.ico')
         self.assertEqual(taskbar._set.call_args.args[1:3], (123, 456))
         taskbar.user.DestroyIcon.assert_called_once_with(456)
+        self.assertEqual(taskbar._set.call_args.args[-1], 'DSH：42 个主会话待查看')
+        for locale, expected in [('en', 'DSH: 42 main conversations need attention'), ('fr', 'DSH：42 个主会话待查看'), ('zh-CN', 'DSH：42 个主会话待查看')]:
+            with self.subTest(locale=locale):
+                taskbar.locale = locale
+                taskbar.set_count(42)
+                self.assertEqual(taskbar._set.call_args.args[-1], expected)
 
     def test_zero_clears_overlay_without_loading_or_destroying_an_icon(self):
         _, taskbar = self.fake_native()
@@ -259,7 +265,7 @@ class NativeTaskbarTests(unittest.TestCase):
 
     def test_ambiguous_windows_refuse_overlay_and_keep_desired_count_for_retry(self):
         _, taskbar = self.fake_native(windows=(123, 456))
-        with self.assertRaisesRegex(RuntimeError, 'Multiple DSH windows'):
+        with self.assertRaisesRegex(RuntimeError, '多个匹配的 DSH 窗口'):
             taskbar.set_count(9)
         self.assertEqual(taskbar.last_count, 9)
         taskbar._set.assert_not_called()
@@ -267,10 +273,13 @@ class NativeTaskbarTests(unittest.TestCase):
 
     def test_failed_hresult_destroys_icon_and_exposes_error(self):
         _, taskbar = self.fake_native(result=-1)
-        with self.assertRaisesRegex(OSError, 'SetOverlayIcon failed'):
+        with self.assertRaisesRegex(OSError, 'SetOverlayIcon 设置覆盖图标失败'):
             taskbar.set_count(7)
         taskbar.user.DestroyIcon.assert_called_once_with(456)
         self.assertEqual(taskbar.last_count, 7)
+        taskbar.locale = 'en'
+        with self.assertRaisesRegex(OSError, 'SetOverlayIcon failed: -0x1'):
+            taskbar.set_count(7)
 
     def test_load_error_never_attempts_overlay_or_destroys_unloaded_icon(self):
         _, taskbar = self.fake_native()
@@ -415,11 +424,11 @@ class NativePortabilityTests(unittest.TestCase):
         namespace = load_native()
         self.assertEqual(namespace['C'].sizeof(namespace['GUID']), 16)
 
-    def test_native_catalogs_have_matching_keys_and_english_fallback(self):
+    def test_native_catalogs_have_matching_keys_and_chinese_fallback(self):
         namespace = load_native()
         catalogs = namespace['_locales']
         self.assertEqual(set(catalogs['en']), set(catalogs['zh']))
-        self.assertEqual(namespace['native_message']('fr', 'ambiguous'), catalogs['en']['ambiguous'])
+        self.assertEqual(namespace['native_message']('fr', 'ambiguous'), catalogs['zh']['ambiguous'])
         self.assertIn('3 个主会话', namespace['native_message']('zh', 'attention', count=3))
 
     def test_native_source_has_no_app_id_or_window_title_mutation_or_lookup(self):
@@ -431,9 +440,90 @@ class NativePortabilityTests(unittest.TestCase):
         namespace = load_native()
         namespace['Taskbar'] = Mock()
         with patch.object(sys, 'platform', 'linux'), patch.object(sys, 'argv', ['native.py', '--executable', 'fake.exe']):
-            with self.assertRaisesRegex(RuntimeError, 'requires Windows'):
+            with self.assertRaisesRegex(RuntimeError, '需要带 Explorer 的 Windows'):
                 namespace['main']()
         namespace['Taskbar'].assert_not_called()
+
+
+class NativeLanguageTests(unittest.TestCase):
+    def test_default_and_invalid_language_ignore_english_environment(self):
+        language_of = load_native()['language_of']
+        with patch.dict(os.environ, {'LANG': 'en_US.UTF-8'}, clear=True):
+            self.assertEqual(language_of(), 'zh')
+            for value in (None, '', 'fr', 'ja-JP', 'C.UTF-8', 'zh-CN', 'zh_TW'):
+                with self.subTest(value=value):
+                    self.assertEqual(language_of(value), 'zh')
+
+    def test_explicit_english_variants_are_preserved(self):
+        language_of = load_native()['language_of']
+        for value in ('en', 'en-US', 'en_GB.UTF-8', 'en.UTF-8', 'EN'):
+            with self.subTest(value=value):
+                self.assertEqual(language_of(value, {'LANG': 'zh_CN.UTF-8'}), 'en')
+
+    def test_explicit_auto_environment_priority_and_chinese_fallback(self):
+        language_of = load_native()['language_of']
+        for env, expected in [
+            ({'LC_ALL': 'zh_CN.UTF-8', 'LC_MESSAGES': 'en', 'LANG': 'en'}, 'zh'),
+            ({'LC_ALL': 'en_US.UTF-8', 'LC_MESSAGES': 'zh', 'LANG': 'zh'}, 'en'),
+            ({'LC_ALL': '', 'LC_MESSAGES': 'en_GB.UTF-8', 'LANG': 'zh'}, 'en'),
+            ({'LANG': 'en'}, 'en'), ({'LANG': 'zh_TW'}, 'zh'),
+            ({'LC_ALL': 'fr', 'LANG': 'en'}, 'zh'), ({'LANG': 'C.UTF-8'}, 'zh'), ({}, 'zh'),
+        ]:
+            with self.subTest(env=env):
+                self.assertEqual(language_of('auto', env), expected)
+
+    def test_missing_native_translation_key_falls_back_to_chinese(self):
+        namespace = load_native()
+        for locale in (None, '', 'fr', 'en', 'zh'):
+            self.assertEqual(namespace['native_message'](locale, 'missing-key'), 'missing-key')
+        namespace['_locales']['en'].pop('attention')
+        self.assertEqual(namespace['native_message']('en', 'attention', count=3), 'DSH：3 个主会话待查看')
+        self.assertIn('Multiple DSH windows', namespace['native_message']('en', 'ambiguous'))
+
+    def test_taskbar_constructor_defaults_and_fallback_without_loading_win32(self):
+        namespace = load_native()
+        Taskbar = namespace['Taskbar']
+        for locale, expected in [(None, 'zh'), ('fr', 'zh'), ('en', 'en'), ('zh-CN', 'zh'), ('auto', 'en')]:
+            with self.subTest(locale=locale), patch.dict(os.environ, {'LANG': 'en'}, clear=True):
+                taskbar = Taskbar.__new__(Taskbar)
+                with patch.object(namespace['C'], 'WinDLL', create=True, side_effect=RuntimeError('fake DLL boundary')):
+                    with self.assertRaisesRegex(RuntimeError, 'fake DLL boundary'):
+                        if locale is None:
+                            taskbar.__init__('fake.exe', '.')
+                        else:
+                            taskbar.__init__('fake.exe', '.', locale)
+                self.assertEqual(taskbar.locale, expected)
+
+    def test_main_normalizes_default_english_auto_and_unsupported_before_fake_taskbar(self):
+        for args, env, expected in [
+            ([], {'LANG': 'en'}, 'zh'), (['--locale', 'en'], {'LANG': 'zh'}, 'en'),
+            (['--locale', 'auto'], {'LANG': 'en'}, 'en'), (['--locale', 'auto'], {}, 'zh'),
+            (['--locale', 'auto'], {'LC_ALL': 'fr', 'LANG': 'en'}, 'zh'),
+            (['--locale', 'fr'], {'LANG': 'en'}, 'zh'), (['--locale', ''], {'LANG': 'en'}, 'zh'),
+        ]:
+            with self.subTest(args=args, env=env):
+                namespace = load_native()
+                taskbar = FakeTaskbar()
+                namespace['Taskbar'] = Mock(return_value=taskbar)
+                namespace['worker'] = Mock()
+                with patch.object(sys, 'platform', 'win32'), patch.object(sys, 'argv', ['native.py', '--executable', 'fake.exe'] + args), patch.dict(os.environ, env, clear=True):
+                    namespace['main']()
+                self.assertEqual(namespace['Taskbar'].call_args.args[-1], expected)
+                self.assertTrue(taskbar.closed)
+
+    def test_non_windows_diagnostic_preserves_explicit_english_and_auto(self):
+        for args, env, message in [
+            (['--locale', 'en'], {}, 'requires Windows'),
+            (['--locale', 'auto'], {'LANG': 'en_US.UTF-8'}, 'requires Windows'),
+            (['--locale', 'fr'], {'LANG': 'en'}, '需要带 Explorer 的 Windows'),
+        ]:
+            with self.subTest(args=args):
+                namespace = load_native()
+                namespace['Taskbar'] = Mock()
+                with patch.object(sys, 'platform', 'linux'), patch.object(sys, 'argv', ['native.py', '--executable', 'fake.exe'] + args), patch.dict(os.environ, env, clear=True):
+                    with self.assertRaisesRegex(RuntimeError, message):
+                        namespace['main']()
+                namespace['Taskbar'].assert_not_called()
 
 
 if __name__ == '__main__':

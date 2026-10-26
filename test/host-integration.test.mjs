@@ -79,6 +79,7 @@ const session = (id = 'main', depth = 0) => ({ id, header: { id, delegationDepth
 test('host lifecycle wires official APIs, counts real-shaped events and clears on native focus', async () => {
   const f = await fixture();
   try {
+    assert.equal(f.status().version, '0.1.1');
     assert.equal(f.status().phase, 'running'); assert.equal(f.status().helperReady, true);
     assert.equal(f.requests.length, 1); assert.equal(f.requests[0].argv.includes('-I'), true);
     assert.deepEqual(Object.keys(f.requests[0].stdio).sort(), ['stderr', 'stdin', 'stdout']);
@@ -170,4 +171,30 @@ test('disposal cancels a scheduled restart instead of leaking a new owned helper
   await f.close();
   assert.equal(timers.pending.size, 0); assert.equal(f.requests.length, 1);
   assert.equal(f.status().mounted, false); assert.equal(f.status().native.count, 0);
+});
+
+
+for (const [label, language, env, expected] of [
+  ['missing language ignores English environment', undefined, { LANG: 'en_US.UTF-8' }, 'zh'],
+  ['empty language', '', { LANG: 'en' }, 'zh'],
+  ['null language', null, { LANG: 'en' }, 'zh'],
+  ['unsupported language', 'fr', { LANG: 'en' }, 'zh'],
+  ['explicit English ignores Chinese environment', 'en', { LANG: 'zh_CN.UTF-8' }, 'en'],
+  ['explicit auto respects English environment', 'auto', { LANG: 'en_US.UTF-8' }, 'en'],
+  ['explicit auto respects Chinese environment', 'auto', { LANG: 'zh_CN.UTF-8' }, 'zh'],
+  ['explicit auto without environment', 'auto', {}, 'zh'],
+  ['explicit auto with unsupported environment', 'auto', { LC_ALL: 'fr', LANG: 'en' }, 'zh'],
+]) test(`host language regression: ${label}`, async () => {
+  const running = await fixture({ language }, false, { env });
+  try {
+    assert.deepEqual(Array.from(running.requests[0].argv).slice(-2), ['--locale', expected]);
+    running.native({ type: 'fatal', message: 'original provider detail' });
+    assert.match(running.status().lastError, expected === 'zh' ? /原生辅助进程错误/ : /Native helper error/);
+    assert.match(running.status().lastError, /original provider detail/);
+  } finally { await running.close(); }
+  const invalid = await fixture({ language, pythonPath: 'C:/Runtime/electron.exe' }, false, { env });
+  try {
+    assert.equal(invalid.requests.length, 0);
+    assert.match(invalid.status().lastError, expected === 'zh' ? /未启动辅助进程/ : /No helper was started/);
+  } finally { await invalid.close(); }
 });

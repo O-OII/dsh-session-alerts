@@ -8,4 +8,4 @@
         notifyOnError: true
         notifyOnWaiting: true
         notifyOnGoalRounds: false
-        language: auto
+        language: zh

@@ -19,7 +19,7 @@ GitHub 目标：<https://github.com/O-OII/dsh-native-taskbar-badge>。可独立�
 - 用户取消、历史恢复标记不提醒。默认过滤活动目标仍在自动推进的已完成中间回合；最终完成及失败仍可计数。
 - 校验进程完整可执行文件路径，不模糊匹配标题。若多个可见顶层窗口属于同一匹配 exe，拒绝猜测；不会恢复隐藏到托盘的应用。
 
-没有自定义 GUI；国际化以中英文设置元数据、诊断和文档为主。不把测试小图标拼贴当作真实桌面截图。
+没有自定义 GUI；国际化以中英文设置元数据、诊断和文档为主，默认简体中文，缺失或不支持的语言及翻译回退简体中文，保留显式英文。不把测试小图标拼贴当作真实桌面截图。
 
 ## 与类似方案的区别
 
@@ -73,7 +73,9 @@ $Project = (Resolve-Path .).Path
 | `notifyOnError` | `true` | 计入失败、阻塞及输出超限。 |
 | `notifyOnWaiting` | `true` | 计入待审批与 `ask_user_question`。 |
 | `notifyOnGoalRounds` | `false` | 是否计入活动目标自动推进的已完成中间回合。 |
-| `language` | `auto` | 诊断及可访问性描述支持 `en`、`zh`；auto 按 `LC_ALL`、`LC_MESSAGES`、`LANG` 选择，否则回退英文。设置元数据独立跟随宿主界面语言。 |
+| `language` | `zh` | 默认简体中文，无需额外配置。显式 `en` 选择英文；显式 `auto` 依次读取 `LC_ALL`、`LC_MESSAGES`、`LANG`，缺失或不支持的语言回退简体中文。设置元数据独立跟随受支持的宿主界面语言，否则使用通用中文元数据。 |
+
+默认**不读取环境语言**：即使 `LANG` 为英文仍显示中文。需要英文可设 `language: en`；只有显式 `language: auto` 才跟随环境，因此英文环境下 auto 显示英文是预期行为。已有显式 `en`/`auto` 配置不会被覆盖。`zh-CN`/`zh_TW` 均使用简体中文目录，英文区域变体也受支持；缺失、空值、不支持的配置及缺失翻译键均回退简体中文。独立 Python helper 使用同样默认与回退，可显式传入 `--locale en` 或 `--locale auto`。资产预览页也默认中文，保留 `?lang=en`，可用 `?lang=auto` 显式跟随浏览器。
 
 发现顺序：
 
@@ -89,7 +91,7 @@ $Project = (Resolve-Path .).Path
 - **`configuration-error`：**设置精确桌面 exe 及可信 Python 3.10+；插件不自动安装 Python，不要选 Electron/node。
 - **有计数却不可见：**确认实际存在任务栏按钮，Windows 允许显示角标。仅托盘窗口不会被恢复；前台清零是设计行为，小按钮模式和策略也可能隐藏覆盖图标。
 - **多个 DSH 窗口：**在安全时机自行关闭不需要的额外窗口，或停用插件；不会按标题猜测，也无逐窗口选择器。
-- **helper 报错/就绪超时：**检查 Python、交互用户会话、Explorer 及安全策略。启动带 `-I -u`；错误有英文通用回退，底层系统错误可保留系统语言。
+- **helper 报错/就绪超时：**检查 Python、交互用户会话、Explorer 及安全策略。启动带 `-I -u`；插件自有错误及 HRESULT 包装默认并回退简体中文，底层系统或标准库错误可保留原语言。
 - **helper 崩溃/Explorer 重建：**意外退出最多按 1/2/4 秒重试三次；Explorer/窗口拓扑改变后重施仍待查看的覆盖图标，不生成新会话提醒。重试耗尽后修复原因，再停用/启用插件。
 - 插件旁可选诊断文件为 `runtime-status.json`；只读安装位置可能警告，但计数不依赖写成功。内容为状态、PID、窗口句柄/计数、错误文本，不保存会话正文。错误仍可能含本机路径，分享前脱敏，不要上传完整 profile 或私密快照。
 
@@ -111,9 +113,10 @@ $Project = (Resolve-Path .).Path
 node --experimental-vm-modules --test test/*.test.mjs
 python -B -m unittest discover -s test -p 'test_*.py' -v
 python -B tools/generate-assets.py
+npm run test:pack
 ```
 
-无需 npm/pip 安装。保留五项基础测试套件（63 JavaScript + 29 Python），新增路径发现、字段/locale 完整性、原生跨平台及配置安全失败测试。本次在 Windows、Node 24.21.0 / Python 3.12.14 实跑 **87 JavaScript + 35 Python，全部通过，无跳过**。还通过隔离官方 Desktop SDK 导入，核验七个字段的中英文元数据及英文回退，并确认有边界发现桌面/Python 程序；未 apply 插件、未启动 helper、未读取 profile。Host 测试在 Linux 也模拟 Windows；所有子进程和窗口行为均为 fake。[CI](./.github/workflows/test.yml) 在 Ubuntu 与 Windows 上执行相同 fake 测试，绝不直接运行真实 helper。**Windows runner 测试成功不代表真实 Windows 任务栏验收。**截图制作/隐私边界见[贡献指南](./CONTRIBUTING.md)。
+无需 npm/pip 安装；实际打包测试需要已有 npm，以 `npm pack --ignore-scripts --offline` 运行，缓存和产物均限制在仓库 ignored `artifacts/` 内。仓库原本没有 lockfile，且无依赖，本次不新增。保留五项基础测试套件（63 JavaScript + 29 Python），以及路径发现、字段/locale 完整性、原生跨平台及配置安全失败覆盖。0.1.1 在 Windows、Node 24.21.0 / Python 3.12.14 实跑 **101 JavaScript + 42 Python + 3 项真实打包测试，全部通过，无跳过**，覆盖英文环境下默认中文、显式英文、显式 auto 优先级/回退、缺失翻译键、通用中文 schema 元数据及七个字段的双语元数据。解包后核验运行时代码的中文默认、0.1.1 版本、双语目录、100 个图标，以及排除测试/私密产物。未读取或修改现用 profile/已安装插件。Host 测试在 Linux 也模拟 Windows；所有子进程和窗口行为均为 fake。[CI](./.github/workflows/test.yml) 在 Ubuntu 与 Windows 上执行相同 fake 测试，绝不直接运行真实 helper。**Windows runner 测试成功不代表真实 Windows 任务栏验收。**截图制作/隐私边界见[贡献指南](./CONTRIBUTING.md)。
 
 ## 许可与资产来源
 

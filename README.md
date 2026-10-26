@@ -8,7 +8,7 @@ Repository target: <https://github.com/O-OII/dsh-native-taskbar-badge>. This sou
 
 ![Bundled font-free icon assets — illustration](docs/images/badge-assets-en.png)
 
-*Asset illustration, not a Windows desktop screenshot. Open `tools/preview-assets.html` to inspect the exact bundled ICO artwork.*
+*Asset illustration, not a Windows desktop screenshot. Open `tools/preview-assets.html` to inspect the exact bundled ICO artwork (Chinese by default; `?lang=en` selects English, `?lang=auto` explicitly follows the browser language).*
 
 ## What the number means
 
@@ -19,7 +19,7 @@ Repository target: <https://github.com/O-OII/dsh-native-taskbar-badge>. This sou
 - User cancellation and restored-history markers do not notify. Completed intermediate rounds of an active goal are filtered by default; final completion and failures remain eligible.
 - Matching uses the full executable path, never fuzzy window titles. More than one visible matching top-level window is ambiguous: the helper refuses to guess. It does not restore tray-hidden windows.
 
-There is no custom GUI. Settings have English/Chinese metadata; diagnostics have English fallback and an optional Chinese language selection. No synthetic icon collage is presented as a desktop screenshot.
+There is no custom GUI. Settings have English/Chinese metadata. Simplified Chinese is the default and fallback for diagnostics, accessibility descriptions and generic settings metadata; explicit English remains available. No synthetic icon collage is presented as a desktop screenshot.
 
 ## Compare the approaches
 
@@ -73,7 +73,9 @@ The standalone [bundle patch](./cordis.patch.yml) has no machine-specific absolu
 | `notifyOnError` | `true` | Include errors, blocked and token-limit endings. |
 | `notifyOnWaiting` | `true` | Include approvals and `ask_user_question`. |
 | `notifyOnGoalRounds` | `false` | Include completed intermediate rounds while a goal remains active. |
-| `language` | `auto` | Diagnostics/accessibility description: `en` or `zh`; auto reads `LC_ALL`, `LC_MESSAGES`, then `LANG`, else English. The settings renderer uses the host UI language independently. |
+| `language` | `zh` | Simplified Chinese by default, with no configuration required. Explicit `en` selects English. Explicit `auto` reads `LC_ALL`, `LC_MESSAGES`, then `LANG`; missing/unsupported languages fall back to Simplified Chinese. The settings renderer follows a supported host UI language independently, otherwise generic Chinese metadata. |
+
+The default does **not** inspect your environment: an English `LANG` still gives Chinese unless you explicitly choose `language: auto`. To opt into English, set `language: en`; `language: auto` with an English environment intentionally gives English. Existing explicit `en`/`auto` settings are not overwritten. `zh-CN`/`zh_TW` map to the Simplified Chinese catalog; English regional variants are accepted. Missing/empty/unsupported settings and missing translation keys fall back to Simplified Chinese. The standalone Python helper uses the same default/fallback and accepts `--locale en` or explicit `--locale auto`.
 
 Discovery order:
 
@@ -89,7 +91,7 @@ If discovery cannot establish both paths, no helper starts. Set them in the plug
 - **`configuration-error`:** supply the exact existing desktop executable and trusted Python 3.10+ executable. There is no automatic Python installation; do not point Python to Electron/node.
 - **No visible number:** make sure the application has an actual taskbar button and Windows allows badges/overlays. A hidden tray-only app is not restored. Existing focus clears the count by design. Small-button mode and shell policy may suppress overlays.
 - **Multiple DSH windows:** close only your own extra windows at a safe time or disable the plugin; there is no title-based guessing or per-window selector.
-- **Helper error/readiness timeout:** check selected Python, Windows session/Explorer access and security policy. The helper starts with `-I -u`. Errors and native HRESULT detail have a generic English fallback; underlying operating-system messages may remain in the OS language.
+- **Helper error/readiness timeout:** check selected Python, Windows session/Explorer access and security policy. The helper starts with `-I -u`. Plugin-owned errors and native HRESULT wrappers default/fall back to Simplified Chinese; underlying operating-system messages may remain in the OS language.
 - **Crash/Explorer recreation:** unexpected helper exit is retried at most three times (1/2/4 seconds). A changed Explorer/window topology retries a still-pending overlay; it does not generate new session notifications. After retry exhaustion, fix the cause and disable/re-enable the plugin.
 - Optional diagnostics are written beside the plugin as `runtime-status.json`; read-only installs may log a warning but counting does not depend on this file. It contains phase, process IDs, native handles/counts and error text, not conversation content. Error text can still reveal local paths: redact it before sharing. Never submit a full profile or private snapshot.
 
@@ -111,9 +113,10 @@ If discovery cannot establish both paths, no helper starts. Set them in the plug
 node --experimental-vm-modules --test test/*.test.mjs
 python -B -m unittest discover -s test -p 'test_*.py' -v
 python -B tools/generate-assets.py
+npm run test:pack
 ```
 
-There is nothing to install with npm/pip. Five original test suites are retained (63 JavaScript + 29 Python baseline cases), with added path discovery, metadata/catalog, native portability and fail-closed configuration coverage. Preparation checks on Windows with Node 24.21.0 / Python 3.12.14 passed **87 JavaScript + 35 Python tests**, with no failures or skipped cases. An isolated official Desktop SDK import also validated all seven localized schema fields (including English fallback) and bounded discovery of both executables; it did not apply the plugin, start a helper or read a profile. The host test simulates Windows even on Linux; all subprocess and window operations are fakes. [CI](./.github/workflows/test.yml) runs those same fake suites on Ubuntu and Windows, never the live native helper. A Windows CI runner **does not** count as live Windows taskbar acceptance. See [contribution guidance](./CONTRIBUTING.md) for evidence boundaries and screenshot preparation.
+There is nothing to install with npm/pip; the real packaging suite requires an existing npm and runs `npm pack --ignore-scripts --offline` with its cache/output confined to ignored `artifacts/`. No lockfile existed in this dependency-free repository, and none is required or added. Five original test suites are retained (63 JavaScript + 29 Python baseline cases), with path discovery, metadata/catalog, native portability and fail-closed configuration coverage. Version 0.1.1 checks on Windows with Node 24.21.0 / Python 3.12.14 passed **101 JavaScript + 42 Python + 3 real-pack tests**, with no failures or skipped cases. These include Chinese defaults under an English environment, explicit English, opt-in auto priority/fallback, missing translation keys, generic Chinese schema metadata and all seven English/Chinese localized fields. The archive is unpacked to validate its runtime defaults, 0.1.1 version, both catalogs, all 100 icons and exclusion of test/private artifacts. No live profile or installed plugin was read or changed. The host test simulates Windows even on Linux; all subprocess and window operations are fakes. [CI](./.github/workflows/test.yml) runs those same fake suites on Ubuntu and Windows, never the live native helper. A Windows CI runner **does not** count as live Windows taskbar acceptance. See [contribution guidance](./CONTRIBUTING.md) for evidence boundaries and screenshot preparation.
 
 ## License and artwork
 
