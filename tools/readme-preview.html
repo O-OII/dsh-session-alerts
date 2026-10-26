@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DSH 角标 · 资产预览</title>
+<style>
+@font-face{font-family:DocNoto;src:local("Noto Sans SC"),local("NotoSansSC-Regular");font-weight:100 900;font-display:block}
+*{box-sizing:border-box}body{margin:0;background:#eef3fa;color:#17283f;font-family:DocNoto;font-size:16px;line-height:1.55}main{width:1200px;height:570px;padding:34px 44px;background:linear-gradient(120deg,#f8fbff,#edf3fb);overflow:hidden}.header{display:flex;align-items:center;gap:16px}.app{width:52px;height:52px}.eyebrow{font-size:12px;letter-spacing:1.3px;font-weight:700;color:#4261a0}.scope{margin-left:auto;color:#4e6484;border:1px solid #cad8ed;background:#fff;padding:7px 13px;border-radius:30px;font-size:13px}h1{font-size:32px;line-height:1.3;margin:22px 0 8px;letter-spacing:-.7px}p{margin:0;color:#60718a}.grid{display:grid;gap:18px;margin:25px 0 22px}.assets{grid-template-columns:repeat(4,1fr)}.states{grid-template-columns:repeat(3,1fr)}.flow{grid-template-columns:repeat(4,1fr)}.card{background:#fff;border:1px solid #d6e1f0;border-radius:18px;padding:20px}.pair{display:flex;gap:10px;margin:15px 0}.surface{height:86px;flex:1;display:flex;align-items:center;justify-content:center;background:#eff3f9;border-radius:12px}.surface.dark{background:#24364c}.surface img{width:64px;height:64px}.asset-name{font-size:20px;font-weight:700}.small{font-size:13px;color:#6b7e99}.sizes{padding:9px 13px;background:#e4ecfa;border-radius:9px;font-size:13px;color:#395784;display:inline-block}.footer{border-top:1px solid #cdd9eb;padding-top:15px;display:flex;justify-content:space-between;gap:20px;font-size:13px;color:#60718a}.footer strong{color:#3c5478;font-weight:500}.state-top{display:flex;align-items:center;justify-content:space-between}.state-top img{width:64px;height:64px}.count{font-size:43px;font-weight:700;line-height:1.2;color:#243d66}.card h2{font-size:18px;margin:15px 0 6px}.card p{font-size:14px}.state-code{margin-top:18px;padding-top:12px;border-top:1px solid #e2e9f4;font-size:13px;color:#44618a}.step-number{font-size:12px;letter-spacing:1px;color:#6780a6}.step-icon{height:72px;display:flex;align-items:center;gap:15px;margin:12px 0 16px}.step-icon img{width:48px;height:48px}.zero{font-size:40px;font-weight:700;color:#27846e}.zero-label{color:#27846e;font-size:13px}.flow h2{font-size:17px;margin-top:0}.flow .card{position:relative;padding:18px}.flow .card:not(:last-child):after{content:"";position:absolute;right:-15px;top:105px;width:10px;height:10px;border-top:2px solid #8297b7;border-right:2px solid #8297b7;transform:rotate(45deg);z-index:1}.flow .card:last-child{background:#edf8f4;border-color:#bcded3}.flow .card p{font-size:13px;min-height:40px}#font-error{position:absolute;inset:0;padding:40px;background:white;color:#a00;display:none}
+</style>
+</head>
+<body><main id="preview"></main><div id="font-error">Install the open-source Noto Sans SC font before capturing this preview.</div>
+<script>
+// Documentation only: loads repository artwork; no DSH, Windows or runtime APIs.
+const params = new URLSearchParams(location.search);
+const selected = params.get('lang') === 'auto' ? navigator.language : params.get('lang');
+const en = /^en(?:[-_.]|$)/i.test(String(selected));
+const kind = ['assets','states','flow'].includes(params.get('view')) ? params.get('view') : 'assets';
+const t = (zh, english) => en ? english : zh;
+const icon = (name, size='') => `<img src="../assets/badges/${name}.ico" alt="${name==='99plus'?'99+':name}" ${size}>`;
+const title = {assets:t('附带的图标，原样预览。','Bundled artwork. Exactly as shipped.'),states:t('从 1 到 99+，关注主会话。','From 1 to 99+. Count main sessions.'),flow:t('后台累计，切回清零。','Accumulate away. Clear on return.')}[kind];
+document.documentElement.lang = en ? 'en' : 'zh-CN';
+document.title = title;
+let content = '';
+if(kind==='assets'){
+  content = `<div class="grid assets">${['1','2','12','99plus'].map(n=>`<section class="card"><div class="asset-name">${n==='99plus'?'99+':n}</div><div class="pair"><div class="surface">${icon(n)}</div><div class="surface dark">${icon(n)}</div></div><div class="small">${n}.ico · ${t('浅色 / 深色底','Light / dark surface')}</div></section>`).join('')}</div><div class="sizes">${t('每个 ICO 内含','Each ICO contains')} 16 / 24 / 32 / 48 / 64 px · ${t('手绘几何数字，无字体','Hand-drawn geometric digits, no font')}</div>`;
+}else if(kind==='states'){
+  content = `<div class="grid states">${[
+    ['1','1',t('一个主会话需要关注','One main session needs attention'),t('同一会话多次提醒仍只计一次。','Repeated alerts for that session still count once.'),'1.ico'],
+    ['12','12',t('十二个不同主会话','Twelve distinct main sessions'),t('统计待查看会话，不统计消息条数。','Count pending sessions, not individual messages.'),'12.ico'],
+    ['100+','99plus',t('超过九十九个主会话','More than ninety-nine main sessions'),t('显示封顶为 99+；子代理不计。','Display caps at 99+; subagents do not count.'),'99plus.ico']
+  ].map(([n,asset,heading,body,file])=>`<section class="card"><div class="state-top"><div><div class="small">${t('待查看主会话','Pending main sessions')}</div><div class="count">${n}</div></div>${icon(asset)}</div><h2>${heading}</h2><p>${body}</p><div class="state-code">${t('显示资产','Display asset')} → ${file}</div></section>`).join('')}</div>`;
+}else{
+  content = `<div class="grid flow">${[
+    [t('01 · 后台','01 · BACKGROUND'),'1',t('主会话 A 完成','Main session A finishes'),t('一个主会话待查看。','One main session pending.')],
+    [t('02 · 仍在后台','02 · STILL AWAY'),'2',t('主会话 B 等待输入','Main session B awaits input'),t('不同主会话加入，计数变为 2。','A distinct session joins; the count becomes 2.')],
+    [t('03 · 切回 DSH','03 · RETURN TO DSH'),'0',t('确认全部待查看会话','Acknowledge all pending'),t('精确匹配的应用窗口获得焦点，清零。','Focus a window of the exact configured app to clear.')],
+    [t('04 · 再次离开','04 · LEAVE AGAIN'),'0',t('旧事件不重放','No replay of old events'),t('没有新事件，就保持无角标。','No new events means no badge.')]
+  ].map(([step,n,heading,body])=>`<section class="card"><div class="step-number">${step}</div><div class="step-icon">${n==='0'?`<span class="zero">0</span><span class="zero-label">${t('无覆盖角标','No overlay')}</span>`:icon(n)}</div><h2>${heading}</h2><p>${body}</p></section>`).join('')}</div><div class="sizes">${t('窗口级确认，不是逐会话未读；前台事件不累计。','Window-level acknowledgement, not per-session unread; foreground events do not accumulate.')}</div>`;
+}
+document.getElementById('preview').innerHTML = `<header class="header"><img class="app" src="../icon.svg" alt="DSH badge project icon"><div class="eyebrow">${t('DSH · 原生任务栏数字角标','DSH · NATIVE TASKBAR BADGE')}</div><div class="scope">${kind==='assets'?t('资产预览','ASSET PREVIEW'):t('行为示意','BEHAVIOR DIAGRAM')}</div></header><h1>${title}</h1><p>${kind==='assets'?t('直接读取仓库 ICO 文件；浅深底用于观察轮廓，不模拟任务栏。','Directly loads repository ICO files; light and dark surfaces reveal edges, not a taskbar.'):t('基于既有计数规则的说明卡，不模拟 Windows 桌面界面。','Explanation cards for the existing counting policy, not a simulated Windows desktop.')}</p>${content}<footer class="footer"><strong>${t('浏览器渲染 · 非 Windows 桌面实测截图','Browser-rendered · Not a Windows desktop screenshot')}</strong><span>${kind==='assets'?t('项目原生资产 · 未重绘','Original project assets · Unmodified'):t('示意流程 · 非实时运行状态','Illustrative policy · Not live runtime state')}</span></footer>`;
+window.previewReady = (async()=>{
+  await document.fonts.load('16px DocNoto');
+  const fontLoaded = document.fonts.check('16px DocNoto');
+  if(!fontLoaded) document.getElementById('font-error').style.display='block';
+  await Promise.all([...document.images].map(img=>img.decode()));
+  return {fontLoaded, kind, language:en?'en':'zh', images:[...document.images].map(i=>({src:i.getAttribute('src'),width:i.naturalWidth,height:i.naturalHeight}))};
+})();
+</script>
+</body></html>

@@ -24,7 +24,8 @@
   "exports": {
     ".": "./index.mjs",
     "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg"
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
   },
   "files": [
     "index.mjs",
@@ -47,6 +48,7 @@
     "SECURITY.md",
     "CONTRIBUTING.md",
     "ASSET-PROVENANCE.md",
+    "docs/*.md",
     "docs/images"
   ],
   "scripts": {

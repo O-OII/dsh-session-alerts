@@ -5,6 +5,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, writeFileSync } from
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { gunzipSync } from 'node:zlib';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -54,6 +55,16 @@ test('real archive has version 0.1.1, both complete locales and all 100 icons wi
   assert.equal(packed.version, '0.1.1'); assert.equal(packed.version, pkg.version);
   assert.match(packed.description, /任务栏数字角标/);
   assert.equal(packed.dsh.bundle.patch, './cordis.patch.yml');
+  assert.equal(packed.exports['./package.json'], './package.json');
+  const requirePacked = createRequire(pathToFileURL(resolve(unpacked, 'index.mjs')));
+  assert.equal(requirePacked.resolve(`${pkg.name}/package.json`), resolve(unpacked, 'package.json'));
+  assert.equal(requirePacked(`${pkg.name}/package.json`).description, pkg.description);
+  for (const topic of ['behavior', 'configuration', 'operations', 'alternatives', 'verification', 'images']) {
+    for (const suffix of ['', '.zh-CN']) assert.ok(files.has(`docs/${topic}${suffix}.md`), topic + suffix);
+  }
+  for (const view of ['assets', 'states', 'flow']) {
+    for (const language of ['en', 'zh']) assert.ok(files.has(`docs/images/badge-${view}-${language}.png`), view + language);
+  }
   for (const name of ['index.mjs', 'config.mjs', 'i18n.mjs', 'native.py', 'locale/en.json', 'locale/zh.json',
     'cordis.patch.yml', 'LICENSE', 'README.md', 'README.zh-CN.md', 'CHANGELOG.md']) assert.ok(files.has(name), name);
   assert.equal([...files.keys()].filter(name => /^assets\/badges\/.*\.ico$/.test(name)).length, 100);

@@ -12,6 +12,7 @@ The maintainer explicitly authorized open-sourcing this project. The [MIT licens
 - Numeric ICOs in `assets/badges/`: **newly generated for this repository**, not copied from the previous Windows-font-rendered set. The old development script used installed Segoe UI; its glyph redistribution terms were not assumed to be MIT-compatible. Neither those rendered icons nor the font file are exported here.
 - [New generator](./tools/generate-assets.py): independently hand-authored 3×5 geometric digit/plus recipes, circles and a standard ICO/DIB encoder, Python standard library only. No font files, raster icon packs, Pillow or external artwork are needed. Rebuilding produces the same 100 ICOs with 16/24/32/48/64-pixel entries.
 - Windows COM interface names/GUID values are interoperability identifiers, not a bundled implementation. No Microsoft executable, font, SDK or Windows library is distributed.
+- README illustrations: browser screenshots of [the public HTML preview](./tools/readme-preview.html), which directly loads the unchanged repository ICOs and SVG. These are asset previews/behavior diagrams, not Windows desktop screenshots. Explanatory text uses locally installed **Noto Sans SC** (SIL Open Font License); no font file is bundled. No Microsoft font or desktop artwork is used. See [reproduction details](./docs/images.md).
 
 ## Deliberately excluded
 
