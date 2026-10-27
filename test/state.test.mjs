@@ -13,7 +13,7 @@ const waiting = (interactionId = 'q1', sessionId = 'main', turn = 1, interaction
 });
 const resolved = (...args) => ({ ...waiting(...args), type: 'waiting/resolved' });
 const actions = (state, ...items) => items.reduce(reduce, state);
-const background = () => createState({ focused: false });
+const background = () => createState();
 
 // Object.freeze(Map) does not freeze entries; compare snapshots after reduces.
 function snapshot(state) {
@@ -54,11 +54,11 @@ test('different main sessions count once each, regardless of multiple events', (
   assert.equal(state.sessions.get('b').interactions.size, 2);
 });
 
-test('new main turn clears only that session old pending item', () => {
+test('new main turn retains unread result until it is viewed', () => {
   const before = actions(background(), start('a'), end('completed', 'a'), start('b'), end('error', 'b'));
   const after = reduce(before, start('a', 2));
-  assert.equal(count(after), 1);
-  assert.equal(after.pending.has('a'), false);
+  assert.equal(count(after), 2);
+  assert.equal(after.pending.has('a'), true);
   assert.equal(after.pending.has('b'), true);
   assert.equal(count(reduce(after, end('completed', 'a', 2))), 2);
 });
@@ -80,33 +80,38 @@ test('depth zero and missing depth both identify main sessions', () => {
   assert.equal(count(state), 2);
 });
 
-test('focused state never accumulates terminal or waiting notifications', () => {
-  const state = actions(createState({ focused: true }), start(), waiting(), end('error'));
-  assert.equal(count(state), 0);
-  assert.equal(state.pending.size, 0);
-  const blurred = reduce(state, { type: 'focus', focused: false });
-  assert.equal(count(blurred), 0);
-  assert.equal(reduce(blurred, end('error')), blurred);
+test('read is per-session revision CAS; no focus action exists', () => {
+  const state = actions(background(), start('a'), end('error','a'), start('b'), end('completed','b'));
+  for (const action of [{type:'focus',focused:true}, {type:'read',sessionId:'a'},
+    {type:'read',sessionId:'a',revision:999},{type:'read',sessionId:'missing',revision:1}]) {
+    assert.equal(reduce(state,action),state);
+  }
+  const read = {type:'read',sessionId:'a',revision:state.pending.get('a').revision};
+  const after=reduce(state,read);
+  assert.equal(count(after),1); assert.equal(after.pending.has('b'),true);
+  assert.equal(reduce(after,read),after);
 });
-
-test('focus true clears all pending; blur does not replay acknowledged events', () => {
-  const state = actions(background(), start('a'), end('error', 'a'), start('b'), waiting('q', 'b'));
-  const focused = reduce(state, { type: 'focus', focused: true });
-  assert.equal(count(state), 2);
-  assert.equal(count(focused), 0);
-  assert.equal(focused.pending.size, 0);
-  assert.equal(reduce(focused, { type: 'focus', focused: true }), focused);
-  const blurred = reduce(focused, { type: 'focus', focused: false });
-  assert.equal(count(blurred), 0);
-  assert.equal(reduce(blurred, waiting('q', 'b')), blurred);
-  assert.equal(reduce(blurred, end('error', 'a')), blurred);
+test('old turn result survives a new turn and waiting resolution', () => {
+  let state=actions(background(),start(),end(),start('main',2),waiting('q','main',2));
+  assert.equal(count(state),1); assert.equal(state.pending.get('main').kind,'terminal');
+  state=reduce(state,resolved('q','main',2));
+  assert.equal(count(state),1); assert.equal(state.pending.get('main').turn,1);
+  state=reduce(state,{type:'read',sessionId:'main',revision:state.pending.get('main').revision});
+  assert.equal(count(state),0);
 });
-
-test('after acknowledging waiting, a later background completion notifies anew', () => {
-  const state = actions(background(), start(), waiting(),
-    { type: 'focus', focused: true }, { type: 'focus', focused: false }, end());
-  assert.equal(count(state), 1);
-  assert.equal(state.pending.get('main').kind, 'terminal');
+test('reading an old result leaves a new waiting interaction counted', () => {
+  let state=actions(background(),start(),end(),start('main',2),waiting('q','main',2));
+  state=reduce(state,{type:'read',sessionId:'main',revision:state.pending.get('main').revision});
+  assert.equal(count(state),1); assert.equal(state.pending.get('main').kind,'waiting');
+  state=reduce(state,resolved('q','main',2)); assert.equal(count(state),0);
+});
+test('read-before-new-result and new-result-before-old-read are both safe', () => {
+  const before=actions(background(),start(),end());
+  const ack={type:'read',sessionId:'main',revision:before.pending.get('main').revision};
+  const first=actions(before,ack,start('main',2),end('completed','main',2));
+  const second=actions(before,start('main',2),end('completed','main',2),ack);
+  assert.equal(count(first),1); assert.equal(count(second),1);
+  assert.equal(second.pending.get('main').turn,2);
 });
 
 for (const reason of ['completed', 'error', 'blocked', 'max-tokens']) {
@@ -195,7 +200,7 @@ test('stale previous-turn resolve cannot delete current wait with reused id', ()
   assert.equal(reduce(state, end('error', 'main', 1)), state);
   assert.equal(reduce(state, start('main', 1)), state);
   state = reduce(state, resolved('reuse', 'main', 2));
-  assert.equal(count(state), 0);
+  assert.equal(count(state), 1); // Earlier terminal result remains unread.
 });
 
 test('waiting ids and session ids containing delimiters cannot collide', () => {
@@ -211,7 +216,7 @@ test('dispose cleans state, ignores late events, a new start revives the session
   const before = actions(background(), start(), waiting());
   const disposed = reduce(before, { type: 'session/dispose', sessionId: 'main' });
   assert.equal(count(disposed), 0);
-  assert.equal(disposed.sessions.has('main'), false);
+  assert.equal(disposed.sessions.has('main'), true); // Turn dedup survives object unload.
   assert.equal(reduce(disposed, end()), disposed);
   assert.equal(reduce(disposed, waiting('late')), disposed);
   assert.equal(reduce(disposed, { type: 'session/dispose', sessionId: 'main' }), disposed);
@@ -238,7 +243,7 @@ test('initially disabled receives no pending items; focus remains independent', 
   const state = actions(createState({ enabled: false }), start(), end(), { type: 'focus', focused: true });
   assert.equal(count(state), 0);
   assert.equal(state.pending.size, 0);
-  assert.equal(state.focused, true);
+  assert.equal('focused' in state, false);
   assert.equal(count(reduce(state, { type: 'enabled', enabled: true })), 0);
 });
 
@@ -259,7 +264,7 @@ test('no-turn live events work; duplicate open starts do not clear waiting', () 
   assert.equal(reduce(state, begin), state);
   const completed = reduce(state, { type: 'turn/end', sessionId: 'main', reason: 'completed' });
   assert.equal(count(completed), 1);
-  assert.equal(count(reduce(completed, begin)), 0);
+  assert.equal(count(reduce(completed, begin)), 1);
 });
 
 test('mid-turn subscription accepts live end but same/older start cannot replay', () => {
@@ -267,7 +272,7 @@ test('mid-turn subscription accepts live end but same/older start cannot replay'
   assert.equal(count(state), 1);
   assert.equal(reduce(state, start('main', 7)), state);
   assert.equal(reduce(state, start('main', 6)), state);
-  assert.equal(count(reduce(state, start('main', 8))), 0);
+  assert.equal(count(reduce(state, start('main', 8))), 1);
 });
 
 test('unknown turn adopts the first live turn identity to reject later stale events', () => {
@@ -289,7 +294,7 @@ test('count caps at 999 without losing actual session records', () => {
   for (let i = 0; i < 1002; i += 1) state = reduce(state, end('completed', `session-${i}`));
   assert.equal(state.pending.size, 1002);
   assert.equal(count(state), 999);
-  for (let i = 0; i < 5; i += 1) state = reduce(state, { type: 'session/dispose', sessionId: `session-${i}` });
+  for (let i = 0; i < 5; i += 1) state = reduce(state, { type: 'read', sessionId: `session-${i}`, revision: state.pending.get(`session-${i}`).revision });
   assert.equal(count(state), 997);
 });
 

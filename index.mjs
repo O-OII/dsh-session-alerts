@@ -1,4 +1,4 @@
-/** Persistent, host-only Windows taskbar badge plugin. No model tools or prompt changes. */
+/** Windows badge host and authenticated, revision-safe client read receipts. */
 import { createRequire } from 'node:module';
 // Resolve the shipped SDK from the actual Host entry, not this linked workspace.
 // No SDK package is downloaded or installed into the user's profile.
@@ -11,9 +11,12 @@ import { languageOf, translate } from './i18n.mjs';
 import { createConfig } from './config.mjs';
 import { createController } from './controller.mjs';
 import { definition, KEY } from './projection.mjs';
+import { registerBridge } from './bridge.mjs';
 
 export const name = 'native-taskbar-badge';
-export const inject = ['subprocess', 'sessionProjections'];
+// Connection.rpc.handle() registers a route using the caller's scoped webServer.
+// Declare that transitive service read explicitly (required by Cordis rc.3).
+export const inject = ['subprocess', 'sessionProjections', 'connection', 'webServer'];
 const directory = dirname(fileURLToPath(import.meta.url));
 export const Config = createConfig(z);
 
@@ -35,7 +38,7 @@ export function apply(ctx, config) {
   let native = null;
   let controller;
   function status() {
-    const record = { version: '0.1.1', mounted: !disposed, phase, startedAt, updatedAt: new Date().toISOString(),
+    const record = { version: '0.2.1', mounted: !disposed, phase, startedAt, updatedAt: new Date().toISOString(),
       hostPid: process.pid, helperReady: ready, helperGeneration: generation, restarts,
       ...controller?.snapshot(), native, lastError };
     try {
@@ -67,6 +70,7 @@ export function apply(ctx, config) {
   }
   // The framework owns incremental session folding. Only live publication edges
   // below can create an unread item; loading a historical projection never does.
+  registerBridge(ctx, controller, () => disposed);
   ctx.sessionProjections.register(definition);
   const projectionFor = (session) => ctx.sessionProjections.stateOf(session, KEY);
   ctx.on('session/event', (session, event) => {
@@ -92,12 +96,10 @@ export function apply(ctx, config) {
     if (message.type === 'ready') {
       clearTimeout(readyTimer);
       ready = true; phase = 'running'; lastError = null; native = { helperPid: message.pid, windows: message.windows, count: 0 };
-      controller.focus(message.focused); lastSent = null; sendCount(controller.snapshot().pendingCount);
-    } else if (message.type === 'focus') {
-      controller.focus(message.focused);
+      lastSent = null; sendCount(controller.snapshot().pendingCount);
     } else if (message.type === 'applied') {
       if (phase === 'degraded') { phase = 'running'; lastError = null; }
-      native = { ...native, count: message.count, hwnd: message.hwnd, visible: message.visible,
+      native = { ...native, count: message.count, windows: message.windows, visible: message.visible,
         hresult: message.hresult ?? null, reason: message.reason ?? null };
     } else if (message.type === 'error' || message.type === 'fatal') {
       lastError = t('native', { detail: String(message.message).slice(0, 1000) }); phase = message.type === 'fatal' ? 'helper-error' : 'degraded';

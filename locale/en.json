@@ -1,20 +1,19 @@
 {
   "meta": {
     "title": "Native taskbar number badge",
-    "description": "Windows native numeric overlay for main sessions needing attention while DSH is in the background. Focusing DSH clears all counts; no toast, sound or focus stealing."
+    "description": "Windows native per-session unread-result count. Only the active, visible Chat result footer acknowledges its exact revision; foreground results still count. No toast, sound or focus stealing."
   },
   "config": {
     "enabled": { "title": "Enabled", "description": "Enable the Windows helper. Disabling clears the overlay and stops the helper." },
     "desktopExecutable": { "title": "DSH Desktop executable (Windows)", "description": "Absolute Windows path to the exact DSH desktop .exe. Empty: use DSH_DESKTOP_EXECUTABLE, the current DSH executable or the packaged Host location. No title guessing." },
     "pythonPath": { "title": "Python executable (Windows)", "description": "Absolute Windows path to an existing python.exe (Python 3.10+). Empty: use DSH_PYTHON_PATH, DSH_HOME's official primary runtime or the desktop-bundled Python. Never uses Electron or installs Python." },
     "notifyOnError": { "title": "Count unsuccessful endings", "description": "Include errors, blocked turns and token-limit endings, but not user cancellation or history markers." },
-    "notifyOnWaiting": { "title": "Count input requests", "description": "Include pending approvals and ask_user_question. Multiple requests in one main session count once." },
+    "notifyOnWaiting": { "title": "Count input requests", "description": "Include unresolved approvals and ask_user_question until answered/decided. Viewing alone does not acknowledge pending requests. Multiple requests in one main session count once." },
     "notifyOnGoalRounds": { "title": "Count intermediate goal rounds", "description": "Off by default: completed rounds of an active automatically continuing goal are suppressed. Final goal completion and failures can still count." },
     "language": { "title": "Diagnostic language", "description": "Defaults to Simplified Chinese (zh); en and explicit auto remain available. Auto reads LC_ALL, LC_MESSAGES, then LANG; absent/unsupported languages fall back to Simplified Chinese. Settings metadata follows a supported host UI language, otherwise Chinese." }
   },
   "native": {
-    "ambiguous": "Multiple DSH windows: refusing ambiguous badge placement",
-    "attention": "DSH: {count} main conversations need attention",
+        "attention": "DSH: {count} main conversations need attention",
     "platform": "This native helper requires Windows 10/11 with Explorer; use fake tests on other operating systems.",
     "overlay": "SetOverlayIcon failed: {detail}",
     "com": "ITaskbarList3 initialization failed; check Explorer is running in the same interactive user session: {detail}"

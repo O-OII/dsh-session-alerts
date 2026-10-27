@@ -1,20 +1,19 @@
 {
   "meta": {
     "title": "原生任务栏数字角标",
-    "description": "DSH 在后台时，按待查看的主会话数显示 Windows 原生数字覆盖图标；切回 DSH 清除全部计数。不弹窗、不响铃、不抢焦点。"
+    "description": "按主会话未读结果显示 Windows 原生数字角标；仅当前可见 Chat 结果页脚确认精确版本，前台仍累计。不弹窗、不响铃、不抢焦点。"
   },
   "config": {
     "enabled": { "title": "启用", "description": "启用 Windows 辅助进程；停用时清除覆盖图标并退出辅助进程。" },
     "desktopExecutable": { "title": "DSH 桌面程序路径（Windows）", "description": "精确匹配的 DSH 桌面 .exe 的 Windows 绝对路径。留空依次使用 DSH_DESKTOP_EXECUTABLE、当前 DSH 程序或官方 Host 安装位置；不猜窗口标题。" },
     "pythonPath": { "title": "Python 程序路径（Windows）", "description": "已有 Python 3.10+ python.exe 的 Windows 绝对路径。留空依次使用 DSH_PYTHON_PATH、DSH_HOME 的官方主运行时或桌面内置 Python；不会把 Electron 当 Python，也不会安装依赖。" },
     "notifyOnError": { "title": "计入异常结束", "description": "计入错误、阻塞及输出超限，不计用户取消或历史恢复标记。" },
-    "notifyOnWaiting": { "title": "计入待输入请求", "description": "计入待审批及 ask_user_question；一个主会话内多个请求仍只计一次。" },
+    "notifyOnWaiting": { "title": "计入待输入请求", "description": "计入未解决审批及 ask_user_question，直至实际回答/决定；仅查看不确认待处理请求，一个主会话内多个请求仍只计一次。" },
     "notifyOnGoalRounds": { "title": "计入目标中间回合", "description": "默认关闭：过滤仍在自动推进的活动目标已完成中间回合；目标最终完成及失败仍可计数。" },
     "language": { "title": "诊断语言", "description": "默认简体中文（zh），保留 en 和显式 auto。auto 依次读取 LC_ALL、LC_MESSAGES、LANG；缺失或不支持的语言回退简体中文。设置元数据跟随受支持的宿主界面语言，否则使用中文。" }
   },
   "native": {
-    "ambiguous": "存在多个匹配的 DSH 窗口：为避免误放角标，拒绝猜测目标",
-    "attention": "DSH：{count} 个主会话待查看",
+        "attention": "DSH：{count} 个主会话待查看",
     "platform": "原生辅助进程需要带 Explorer 的 Windows 10/11；其他系统请仅运行 fake 测试。",
     "overlay": "SetOverlayIcon 设置覆盖图标失败：{detail}",
     "com": "ITaskbarList3 初始化失败，请确认 Explorer 在同一交互用户会话中运行：{detail}"

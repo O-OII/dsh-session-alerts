@@ -41,7 +41,6 @@ class Taskbar:
         self.user = C.WinDLL('user32', use_last_error=True)
         self.kernel = C.WinDLL('kernel32', use_last_error=True)
         self.ole = C.OleDLL('ole32')
-        self.user.GetForegroundWindow.restype = W.HWND
         self.user.IsWindow.argtypes = [W.HWND]
         self.user.IsWindowVisible.argtypes = [W.HWND]
         self.user.GetWindowThreadProcessId.argtypes = [W.HWND, C.POINTER(W.DWORD)]
@@ -72,7 +71,7 @@ class Taskbar:
         if hr < 0:
             self._release(self.obj); self.ole.CoUninitialize()
             raise OSError(native_message(self.locale, 'com', detail=f'HrInit ({hr:#x})'))
-        self.window = None
+        self.drawn_windows = set()
         self.last_count = 0
 
     def process_path(self, hwnd):
@@ -97,29 +96,35 @@ class Taskbar:
         self.user.EnumWindows(callback, 0)
         return found
 
-    def focused(self):
-        hwnd = self.user.GetForegroundWindow()
-        return bool(hwnd and self.process_path(hwnd) == self.executable)
-
     def set_count(self, count):
         count = max(0, min(int(count), 999))
         self.last_count = count
         windows = self.windows()
-        if len(windows) > 1:
-            raise RuntimeError(native_message(getattr(self, 'locale', 'zh'), 'ambiguous'))
-        self.window = windows[0] if windows else None
-        if self.window is None:
-            return {'type': 'applied', 'count': count, 'hwnd': None, 'visible': False, 'reason': 'no-taskbar-window'}
+        # Every matching Desktop window displays this Host's same aggregate count.
+        # Include previously drawn, now-hidden windows when clearing an overlay.
+        targets = set(windows)
+        if not count:
+            targets.update(hwnd for hwnd in self.drawn_windows
+                           if self.user.IsWindow(hwnd) and self.process_path(hwnd) == self.executable)
+        if not targets:
+            return {'type': 'applied', 'count': count, 'windows': [], 'visible': False, 'reason': 'no-taskbar-window'}
         icon = None
         try:
             if count:
                 name = str(count) if count < 100 else '99plus'
                 icon = self.user.LoadImageW(None, str(self.assets / (name + '.ico')), 1, 32, 32, 0x10)
                 if not icon: raise C.WinError(C.get_last_error())
-            hr = self._set(self.obj, self.window, icon, native_message(getattr(self, 'locale', 'zh'), 'attention', count=count) if count else '')
-            if hr < 0: raise OSError(native_message(getattr(self, 'locale', 'zh'), 'overlay', detail=f'{hr:#x}'))
-            self.last_count = count
-            return {'type': 'applied', 'count': count, 'hwnd': self.window, 'hresult': hr, 'visible': True}
+            failures = []
+            for hwnd in sorted(targets):
+                hr = self._set(self.obj, hwnd, icon, native_message(getattr(self, 'locale', 'zh'), 'attention', count=count) if count else '')
+                if hr < 0:
+                    failures.append(f'{hwnd}: {hr:#x}')
+                elif count:
+                    self.drawn_windows.add(hwnd)
+                else:
+                    self.drawn_windows.discard(hwnd)
+            if failures: raise OSError(native_message(getattr(self, 'locale', 'zh'), 'overlay', detail=', '.join(failures)))
+            return {'type': 'applied', 'count': count, 'windows': sorted(targets), 'hresult': 0, 'visible': bool(windows)}
         finally:
             if icon: self.user.DestroyIcon(icon)
 
@@ -131,8 +136,14 @@ class Taskbar:
 
     def close(self):
         try:
-            if self.window and self.user.IsWindow(self.window) and self.process_path(self.window) == self.executable:
-                self._set(self.obj, self.window, None, '')
+            first_error = None
+            for hwnd in sorted(self.drawn_windows):
+                try:
+                    if self.user.IsWindow(hwnd) and self.process_path(hwnd) == self.executable:
+                        self._set(self.obj, hwnd, None, '')
+                except Exception as error:
+                    first_error = first_error or error
+            if first_error: raise first_error
         finally:
             self._release(self.obj); self.ole.CoUninitialize()
 
@@ -151,10 +162,10 @@ def worker(taskbar):
                 except (ValueError, TypeError): pass
         finally: commands.put({'type': 'quit'})
     threading.Thread(target=read_input, daemon=True).start()
-    previous_focus = taskbar.focused()
     previous_topology = taskbar.topology()
     topology_check = time.monotonic() + 2
-    emit({'type': 'ready', 'focused': previous_focus, 'windows': taskbar.windows(), 'pid': os.getpid()})
+    dirty = False
+    emit({'type': 'ready', 'windows': taskbar.windows(), 'pid': os.getpid()})
     while True:
         try:
             command = commands.get(timeout=0.3)
@@ -165,28 +176,23 @@ def worker(taskbar):
             if command.get('type') == 'set':
                 try:
                     count = int(command.get('count', 0))
-                    # Focus suppresses alerts independently of parent event latency.
-                    if taskbar.focused() and not command.get('preview', False): count = 0
+                    # The Host's unread total is authoritative even in the foreground.
                     emit(taskbar.set_count(count))
-                except Exception as error: emit({'type': 'error', 'message': str(error)})
-        focus = taskbar.focused()
-        if focus != previous_focus:
-            previous_focus = focus
-            if focus and taskbar.last_count:
-                try: emit(taskbar.set_count(0))
-                except Exception as error: emit({'type': 'error', 'message': str(error)})
-            # Clearing parent unread state must not depend on successful drawing.
-            emit({'type': 'focus', 'focused': focus})
+                    dirty = False
+                except Exception as error:
+                    dirty = True
+                    emit({'type': 'error', 'message': str(error)})
         if time.monotonic() >= topology_check:
             topology_check = time.monotonic() + 2
             topology = taskbar.topology()
-            if topology != previous_topology:
-                if taskbar.last_count:
+            if dirty or topology != previous_topology:
+                if dirty or taskbar.last_count:
                     try:
-                        emit(taskbar.set_count(0 if focus else taskbar.last_count))
+                        emit(taskbar.set_count(taskbar.last_count))
                         previous_topology = topology
+                        dirty = False
                     except Exception as error:
-                        # Keep the old topology so a transient Explorer failure retries.
+                        dirty = True
                         emit({'type': 'error', 'message': str(error)})
                 else:
                     previous_topology = topology

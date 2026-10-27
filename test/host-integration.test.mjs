@@ -6,6 +6,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, resolve } from 'node:path';
 import { PassThrough, Writable } from 'node:stream';
+import { guardedServices, officialConnectionRegister } from './connection-contract.mjs';
+const officialRegister = process.env.DSH_BADGE_CONNECTION_SOURCE
+  ? officialConnectionRegister(process.env.DSH_BADGE_CONNECTION_SOURCE) : null;
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const tick = () => new Promise((done) => setImmediate(done));
@@ -37,9 +40,18 @@ async function fixture(overrides = {}, spawnFailure = false, runtime = {}, timer
   }
   const module = await load(resolve(root, 'index.mjs')); await module.evaluate();
   let projection;
-  const projected = new WeakMap();
-  const ctx = {
+  const projected = new WeakMap(); const rpc = new Map(); const routes = new Map(); let seq = 0;
+  const services = {
     logger: { warn() {} },
+    extend(meta) { return Object.assign(Object.create(ctx), meta); },
+    connection: { rpc: { handle(channel, handler) {
+      rpc.set(channel, handler);
+      if (officialRegister) return officialRegister.call({}, ctx, channel, handler);
+      // The shipped Connection reads webServer from the CALLER's scope.
+      // A declaration guard must exercise this even in portable fake-only CI.
+      return ctx.effect(() => ctx.webServer.register({ kind: 'prefix', path: channel }));
+    } } },
+    webServer: { register(route) { routes.set(route.path, route); return () => routes.delete(route.path); } },
     sessionProjections: { register(value) { projection = value; }, stateOf(session) { return projected.get(session) ?? projection.init(); } },
     on(name, callback) { events.set(name, callback); return () => events.delete(name); },
     effect(callback) { disposers.push(callback()); },
@@ -52,7 +64,7 @@ async function fixture(overrides = {}, spawnFailure = false, runtime = {}, timer
         input += chunk.toString(); let end;
         while ((end = input.indexOf('\n')) >= 0) {
           const command = JSON.parse(input.slice(0, end)); input = input.slice(end + 1); commands.push(command);
-          if (command.type === 'set') stdout.write(JSON.stringify({ type: 'applied', count: command.count, hwnd: 123, visible: true, hresult: 0 }) + '\n');
+          if (command.type === 'set') stdout.write(JSON.stringify({ type: 'applied', count: command.count, windows: [123], visible: true, hresult: 0 }) + '\n');
           if (command.type === 'quit') { stdout.end(); finish({ exitCode: 0, signal: null }); }
         }
         next();
@@ -64,22 +76,26 @@ async function fixture(overrides = {}, spawnFailure = false, runtime = {}, timer
     } },
   };
   const config = { enabled: true, desktopExecutable: 'C:/Apps/DSH/DeepSeek Harness.exe', pythonPath: 'C:/Runtime/Python/python.exe', notifyOnError: true, notifyOnWaiting: true, notifyOnGoalRounds: false, language: 'en', ...overrides };
+  const ctx = guardedServices(services, module.namespace.inject);
   module.namespace.apply(ctx, config); await tick();
   function event(session, type, data) {
-    const value = { type, data };
+    const value = { type, data, seq: ++seq };
     projected.set(session, projection.apply(projected.get(session) ?? projection.init(), value));
     events.get('session/event')(session, value);
   }
   const status = () => JSON.parse([...writes].find(([path]) => path.endsWith('runtime-status.json'))[1]);
   const native = (value) => handles.at(-1).stdout.write(JSON.stringify(value) + '\n');
-  return { events, requests, handles, event, status, native, writes, Config: module.namespace.Config, async close() { for (const cleanup of disposers.reverse()) await cleanup?.(); } };
+  return { events, requests, handles, event, status, native, writes, rpc, routes, dependencies: Array.from(module.namespace.inject), Config: module.namespace.Config, async close() { for (const cleanup of disposers.reverse()) await cleanup?.(); } };
 }
 const session = (id = 'main', depth = 0) => ({ id, header: { id, delegationDepth: depth } });
 
-test('host lifecycle wires official APIs, counts real-shaped events and clears on native focus', async () => {
+test('host lifecycle wires official APIs, counts real-shaped events and ignores window-focus messages', async () => {
   const f = await fixture();
   try {
-    assert.equal(f.status().version, '0.1.1');
+    assert.equal(f.status().version, '0.2.1');
+    assert.ok(f.dependencies.includes('webServer'), 'Connection RPC registration requires caller webServer injection');
+    assert.equal(f.routes.has('/native-taskbar-badge'), true);
+    assert.throws(() => guardedServices({ webServer: {} }, ['connection']).webServer, /cannot get property "webServer" without inject/);
     assert.equal(f.status().phase, 'running'); assert.equal(f.status().helperReady, true);
     assert.equal(f.requests.length, 1); assert.equal(f.requests[0].argv.includes('-I'), true);
     assert.deepEqual(Object.keys(f.requests[0].stdio).sort(), ['stderr', 'stdin', 'stdout']);
@@ -89,11 +105,12 @@ test('host lifecycle wires official APIs, counts real-shaped events and clears o
     const calls = f.handles[0].commands.length;
     f.event(a, 'turn/end', { turn: 1, reason: { kind: 'completed' } }); assert.equal(f.handles[0].commands.length, calls);
     f.event(b, 'turn/start', { turn: 1 }); f.event(b, 'turn/end', { turn: 1, reason: { kind: 'error' } }); assert.equal(f.status().native.count, 2);
-    f.native({ type: 'focus', focused: true }); assert.equal(f.status().native.count, 0); assert.equal(f.status().pendingCount, 0);
-    f.native({ type: 'focus', focused: false }); assert.equal(f.status().pendingCount, 0);
+    f.native({ type: 'focus', focused: true }); assert.equal(f.status().native.count, 2); assert.equal(f.status().pendingCount, 2);
+    f.native({ type: 'focus', focused: false }); assert.equal(f.status().pendingCount, 2);
   } finally { await f.close(); }
   assert.equal(f.status().phase, 'stopped'); assert.equal(f.status().mounted, false);
   assert.equal(f.handles[0].commands.at(-1).type, 'quit');
+  assert.equal(f.routes.size, 0, 'Connection route is owned and removed by the badge lifecycle');
   assert.ok([...f.writes.keys()].every((path) => path.endsWith('runtime-status.json')));
 });
 
@@ -140,6 +157,29 @@ test('Chinese diagnostics select localized native accessibility description', as
   const f = await fixture({ language: 'zh-CN' });
   try { assert.deepEqual(Array.from(f.requests[0].argv).slice(-2), ['--locale', 'zh']); }
   finally { await f.close(); }
+});
+
+test('mounted Host RPC forwards exact per-session 5→4 and preserves a newer result', async () => {
+  const f = await fixture();
+  try {
+    const peer = { principal: { kind: 'owner' } };
+    const rpc = f.rpc.get('/native-taskbar-badge'); assert.equal(typeof rpc, 'function');
+    const sessions = ['a','b','c','d','e'].map(id => session(id));
+    for (const main of sessions) {
+      f.event(main, 'turn/start', { turn: 1 });
+      f.event(main, 'turn/end', { turn: 1, reason: { kind: 'completed' } });
+    }
+    assert.equal(f.status().native.count, 5);
+    const receipt = rpc('pending', { sessionId: 'c' }, undefined, peer).value;
+    assert.equal(rpc('read', receipt, undefined, peer).value.accepted, true);
+    assert.equal(f.status().pendingCount, 4); assert.equal(f.status().native.count, 4);
+    assert.equal(rpc('read', receipt, undefined, peer).value.accepted, false);
+    f.event(sessions[2], 'turn/start', { turn: 2 });
+    f.event(sessions[2], 'turn/end', { turn: 2, reason: { kind: 'completed' } });
+    assert.equal(rpc('read', receipt, undefined, peer).value.accepted, false);
+    assert.equal(f.status().pendingCount, 5);
+    f.events.get('session/disposed')(sessions[2]); assert.equal(f.status().pendingCount, 5);
+  } finally { await f.close(); }
 });
 
 function fakeTimers() {

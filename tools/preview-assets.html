@@ -15,7 +15,7 @@
 <div class="tile"><img src="../assets/badges/12.ico" alt="角标 12"><div class="value">12</div></div>
 <div class="tile"><img src="../assets/badges/99plus.ico" alt="角标 99 以上"><div class="value">99+</div></div>
 </div>
-<div class="features" id="features"><span>不修改 ASAR</span><span>无弹窗与声音</span><span>主会话去重计数</span><span>切回应用清零</span></div>
+<div class="features" id="features"><span>不修改 ASAR</span><span>无弹窗与声音</span><span>主会话去重计数</span><span>逐会话已读确认</span></div>
 <p class="warning" id="warning"><strong>资产示意，不是 Windows 桌面截图。</strong>这里由浏览器渲染实际附带的生成图标；真实位置、大小和显示由 Windows 控制，新版本仍需实际桌面验收。</p>
 </main>
 <script>
@@ -30,7 +30,7 @@ if (/^en(?:[-_.]|$)/i.test(String(selected))) {
     intro: 'Preview of the exact font-free ICO assets shipped with this plugin.',
     warning: 'Asset illustration — not a Windows desktop screenshot. These are the bundled generated icons rendered by a browser. Actual placement, size and visibility are controlled by Windows and still need live acceptance for this release variant.',
   })) document.getElementById(id).textContent = text;
-  document.getElementById('features').replaceChildren(...['No ASAR patch', 'No toast or sound', 'Main-session deduplication', 'Clear on app focus'].map(text => {
+  document.getElementById('features').replaceChildren(...['No ASAR patch', 'No toast or sound', 'Main-session deduplication', 'Per-session read receipts'].map(text => {
     const element = document.createElement('span'); element.textContent = text; return element;
   }));
   document.querySelectorAll('.tile img').forEach((image, index) => { image.alt = ['Badge 1', 'Badge 2', 'Badge 12', 'Badge 99 plus'][index]; });

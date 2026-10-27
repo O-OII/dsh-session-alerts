@@ -1,5 +1,25 @@
 # Changelog / 更新记录
 
+## 0.2.1 — 2026-10-27 (local source update, not published)
+
+- Fix actual Cordis service-getter shadow ownership: adding consumer `webServer` injection alone was insufficient. Register through public `ctx.extend({ webServer: ctx.webServer })` and explicitly own the returned route disposer with `ctx.effect`. No private symbols, provider mutation or authentication bypass.
+- Replace raw-register-only confidence with complete official Cordis 4.0.5 + complete Connection rc.3 class/getter regressions: reproduce the old failure despite injection, verify production registration and HTTP 401 gate, and verify restart/disable/re-enable route cleanup while the provider remains alive.
+- 修复真实 Cordis getter 阴影作用域：仅增加消费方 inject 不足，改用公开扩展上下文携带已授权 webServer，并显式持有路由 disposer；不改 provider、不用私有符号、不绕过认证。完整官方框架与完整 Connection 类/getter 回归覆盖旧失败、401 认证门及生命周期清理。
+
+## 0.2.0 — 2026-10-27 (local source update, not published)
+
+- Replace window-level acknowledgement entirely with per-session unread terminal results. No old mode or compatibility path. Foreground A does not suppress completions in B.
+- Bundle an official browser contribution through `dsh.client` and `./client`: real Chat result-footer intersection + active main binding + document visibility/focus + exact timeline turn/end sequence, followed by authenticated per-session revision CAS. Stale, duplicate, old-turn and previous-mount receipts cannot clear newer results.
+- Keep unread terminal results independent of unresolved waiting requests; new turns, request resolution, Session object disposal, page refresh/disconnect and native-helper restart do not discard terminal unread. Host/plugin restart remains intentionally ephemeral, without history replay.
+- Remove native foreground lookup/suppression and preview bypass; draw the same aggregate on exact-executable windows and retry failed drawing without requiring topology change.
+- Explicitly inject `webServer`: the official Connection RPC registrar reads that service from its caller's scope. Add service-declaration guards and direct execution of the shipped SDK registration method to reproduce missing-inject failure and verify route teardown.
+- Add isolated Host/client/loader tests for 5→4, foreground A/background B, multi-window duplicate receipts, visibility changes, reconnect and both ACK/event race orderings. Update bilingual behavior/security/operations and package assertions.
+- Waiting-only view acknowledgement and non-Chat result acknowledgement remain unsupported; actual answers/decisions retire waiting. No live configuration/install, commit, push, restart or paid model call performed by these tests.
+
+### 中文
+
+彻底替换窗口清零为逐会话结果未读，没有旧模式/兼容开关；前台 A 不抑制 B 完成。随包提供官方客户端贡献，以当前主会话、可见/焦点、真实 Chat 结果页脚交集和精确轮末序号取证，经官方认证 RPC 对会话版本 CAS。旧轮次/版本、重复和上次挂载确认不能误清新结果。终态未读与临时等待分别保留，对象卸载/新轮次/请求解决/页面断线刷新/helper 重启不丢结果；Host/插件重启不持久化，不重放历史。移除原生焦点抑制与 preview 绕过，所有精确 exe 窗口显示同一聚合数。补充5→4、双窗口、前台另一会话完成、可见性/重连和两种竞态顺序测试及双语文档。待处理问题仅查看和非 Chat 自动确认尚不支持，实际回答/决定结束等待；测试不部署、不提交/推送、不重启、不调用收费模型。
+
 ## 0.1.1 — 2026-10-26 (local source update, not published)
 
 - Default diagnostics, native accessibility/error descriptions, generic schema metadata, package description and asset preview to Simplified Chinese; missing/empty/unsupported locales and missing translation keys also fall back to Simplified Chinese.

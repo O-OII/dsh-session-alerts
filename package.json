@@ -1,6 +1,6 @@
 {
   "name": "dsh-native-taskbar-badge",
-  "version": "0.1.1",
+  "version": "0.2.1",
   "description": "为 DSH Desktop 主会话显示 Windows 原生 COM 任务栏数字角标；不弹窗、不响铃、不抢焦点、不修改 ASAR。",
   "license": "MIT",
   "author": "O-OII contributors",
@@ -23,12 +23,18 @@
   ],
   "exports": {
     ".": "./index.mjs",
+    "./client": "./client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
   },
   "files": [
     "index.mjs",
+    "bridge.mjs",
+    "client.js",
+    "tools/build-client.mjs",
+    "client.mjs",
+    "read-client.mjs",
     "controller.mjs",
     "state.mjs",
     "projection.mjs",
@@ -52,7 +58,8 @@
     "docs/images"
   ],
   "scripts": {
-    "test": "node --experimental-vm-modules --test test/*.test.mjs",
+    "build": "node tools/build-client.mjs",
+    "test": "node tools/build-client.mjs --check && node --experimental-vm-modules --test test/*.test.mjs",
     "test:python": "python -B -m unittest discover -s test -p test_*.py -v",
     "test:pack": "node --test tools/pack.test.mjs",
     "assets": "python -B tools/generate-assets.py"
@@ -62,6 +69,17 @@
     "dsh": ">=0.2.1-rc.2 <0.3.0"
   },
   "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-connection",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-chat"
+      ]
+    },
     "bundle": {
       "patch": "./cordis.patch.yml"
     }

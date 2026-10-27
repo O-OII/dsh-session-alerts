@@ -125,40 +125,19 @@ class NativeWorkerTests(unittest.TestCase):
         self.assertEqual([event['type'] for event in events], ['ready', 'applied', 'error', 'applied'])
         self.assertEqual(events[-1]['count'], 1)
 
-    def test_focus_clear_failure_still_emits_focus_to_clear_parent_state(self):
-        taskbar = FakeTaskbar(last_count=4, fail_calls={1})
-
-        def focus_now():
-            taskbar.is_focused = True
-            return EMPTY
-
-        events = self.run_scripted(taskbar, [focus_now, {'type': 'quit'}])
-        self.assertEqual(taskbar.set_calls, [0])
-        self.assertEqual([event['type'] for event in events], ['ready', 'error', 'focus'])
-        self.assertEqual(events[-1], {'type': 'focus', 'focused': True})
-
-    def test_foreground_suppresses_set_independent_of_parent_latency(self):
+    def test_foreground_never_suppresses_count_or_clears_on_focus(self):
         taskbar = FakeTaskbar(focused=True)
-        events = self.run_scripted(taskbar, [{'type': 'set', 'count': 7}, {'type': 'quit'}])
-        self.assertEqual(taskbar.set_calls, [0])
-        self.assertTrue(events[0]['focused'])
-        self.assertEqual(events[-1]['count'], 0)
-
-    def test_preview_is_explicit_opt_in_to_bypass_focus_for_a_probe(self):
-        taskbar = FakeTaskbar(focused=True)
-        self.run_scripted(taskbar, [{'type': 'set', 'count': 7, 'preview': True}, {'type': 'quit'}])
+        taskbar.focused = Mock(side_effect=AssertionError('OS focus must never be consulted'))
+        events = self.run_scripted(taskbar, [{'type': 'set', 'count': 7}, EMPTY, {'type': 'quit'}])
         self.assertEqual(taskbar.set_calls, [7])
+        self.assertEqual([event['type'] for event in events], ['ready', 'applied'])
+        self.assertNotIn('focused', events[0])
 
-    def test_background_transition_reports_focus_without_replaying_any_count(self):
-        taskbar = FakeTaskbar(focused=True)
-
-        def blur_now():
-            taskbar.is_focused = False
-            return EMPTY
-
-        events = self.run_scripted(taskbar, [blur_now, {'type': 'quit'}])
-        self.assertEqual(taskbar.set_calls, [])
-        self.assertEqual(events[-1], {'type': 'focus', 'focused': False})
+    def test_failed_set_retries_without_requiring_topology_change(self):
+        taskbar = FakeTaskbar(fail_calls={1})
+        events = self.run_scripted(taskbar, [{'type': 'set', 'count': 4}, EMPTY, EMPTY, {'type': 'quit'}])
+        self.assertEqual(taskbar.set_calls, [4, 4])
+        self.assertEqual([event['type'] for event in events], ['ready', 'error', 'applied'])
 
     def test_bad_count_reports_error_and_worker_processes_next_valid_command(self):
         taskbar = FakeTaskbar()
@@ -206,7 +185,7 @@ class NativeTaskbarTests(unittest.TestCase):
         taskbar.executable = os.path.normcase(os.path.realpath('safe-dsh.exe'))
         taskbar.assets = Path('fake-assets')
         taskbar.obj = object()
-        taskbar.window = None
+        taskbar.drawn_windows = set()
         taskbar.last_count = 0
         taskbar.windows = Mock(return_value=list(windows))
         taskbar._set = Mock(return_value=result)
@@ -263,13 +242,18 @@ class NativeTaskbarTests(unittest.TestCase):
         taskbar._set.assert_not_called()
         taskbar.user.LoadImageW.assert_not_called()
 
-    def test_ambiguous_windows_refuse_overlay_and_keep_desired_count_for_retry(self):
+    def test_multiple_windows_receive_the_same_aggregate_overlay(self):
         _, taskbar = self.fake_native(windows=(123, 456))
-        with self.assertRaisesRegex(RuntimeError, '多个匹配的 DSH 窗口'):
-            taskbar.set_count(9)
+        result = taskbar.set_count(9)
+        self.assertEqual(result['windows'], [123, 456])
         self.assertEqual(taskbar.last_count, 9)
-        taskbar._set.assert_not_called()
-        taskbar.user.LoadImageW.assert_not_called()
+        self.assertEqual([call.args[1] for call in taskbar._set.call_args_list], [123, 456])
+        taskbar.user.LoadImageW.assert_called_once()
+        taskbar.user.DestroyIcon.assert_called_once_with(456)
+        self.assertEqual(taskbar.drawn_windows, {123, 456})
+        taskbar.windows.return_value = []
+        taskbar.set_count(0)
+        self.assertEqual(taskbar.drawn_windows, set())
 
     def test_failed_hresult_destroys_icon_and_exposes_error(self):
         _, taskbar = self.fake_native(result=-1)
@@ -278,7 +262,7 @@ class NativeTaskbarTests(unittest.TestCase):
         taskbar.user.DestroyIcon.assert_called_once_with(456)
         self.assertEqual(taskbar.last_count, 7)
         taskbar.locale = 'en'
-        with self.assertRaisesRegex(OSError, 'SetOverlayIcon failed: -0x1'):
+        with self.assertRaisesRegex(OSError, 'SetOverlayIcon failed: 123: -0x1'):
             taskbar.set_count(7)
 
     def test_load_error_never_attempts_overlay_or_destroys_unloaded_icon(self):
@@ -291,7 +275,7 @@ class NativeTaskbarTests(unittest.TestCase):
 
     def test_close_revalidates_executable_before_clearing_existing_window(self):
         _, taskbar = self.fake_native()
-        taskbar.window = 123
+        taskbar.drawn_windows = {123}
         taskbar.close()
         taskbar.process_path.assert_called_once_with(123)
         taskbar._set.assert_called_once_with(taskbar.obj, 123, None, '')
@@ -300,7 +284,7 @@ class NativeTaskbarTests(unittest.TestCase):
 
     def test_close_does_not_clear_foreign_recycled_hwnd_but_releases_com(self):
         _, taskbar = self.fake_native()
-        taskbar.window = 123
+        taskbar.drawn_windows = {123}
         taskbar.process_path.return_value = 'foreign.exe'
         taskbar.close()
         taskbar._set.assert_not_called()
@@ -309,7 +293,7 @@ class NativeTaskbarTests(unittest.TestCase):
 
     def test_close_does_not_query_or_clear_destroyed_window(self):
         _, taskbar = self.fake_native()
-        taskbar.window = 123
+        taskbar.drawn_windows = {123}
         taskbar.user.IsWindow.return_value = False
         taskbar.close()
         taskbar.process_path.assert_not_called()
@@ -318,7 +302,7 @@ class NativeTaskbarTests(unittest.TestCase):
 
     def test_close_releases_com_even_if_clearing_overlay_throws(self):
         _, taskbar = self.fake_native()
-        taskbar.window = 123
+        taskbar.drawn_windows = {123}
         taskbar._set.side_effect = OSError('fake COM failure')
         with self.assertRaises(OSError):
             taskbar.close()
@@ -351,20 +335,13 @@ class NativeTaskbarTests(unittest.TestCase):
             EnumWindows=enumerate_windows,
         )
         self.assertEqual(taskbar.windows(), [1, 4])
-        self.assertEqual(title_calls, [])  # Same executable with unrelated title is still a candidate; ambiguity is refused.
+        self.assertEqual(title_calls, [])  # Same executable with unrelated title is still a candidate; both windows receive the aggregate.
         self.assertEqual([call.args[0] for call in taskbar.process_path.call_args_list], [1, 2, 4])
 
-    def test_focus_uses_verified_process_not_title_or_nonzero_handle_alone(self):
-        namespace = load_native()
-        taskbar = namespace['Taskbar'].__new__(namespace['Taskbar'])
-        taskbar.executable = 'verified.exe'
-        taskbar.process_path = Mock(return_value='foreign.exe')
-        taskbar.user = types.SimpleNamespace(GetForegroundWindow=Mock(return_value=123))
-        self.assertFalse(taskbar.focused())
-        taskbar.process_path.return_value = taskbar.executable
-        self.assertTrue(taskbar.focused())
-        taskbar.user.GetForegroundWindow.return_value = 0
-        self.assertFalse(taskbar.focused())
+    def test_native_has_no_foreground_or_preview_protocol(self):
+        source = NATIVE_PATH.read_text(encoding='utf-8')
+        for forbidden in ('GetForegroundWindow', 'previous_focus', "command.get('preview'"):
+            self.assertNotIn(forbidden, source)
 
     def test_process_query_failure_closes_handle_and_returns_none(self):
         namespace = load_native()
@@ -428,7 +405,7 @@ class NativePortabilityTests(unittest.TestCase):
         namespace = load_native()
         catalogs = namespace['_locales']
         self.assertEqual(set(catalogs['en']), set(catalogs['zh']))
-        self.assertEqual(namespace['native_message']('fr', 'ambiguous'), catalogs['zh']['ambiguous'])
+        self.assertEqual(namespace['native_message']('fr', 'platform'), catalogs['zh']['platform'])
         self.assertIn('3 个主会话', namespace['native_message']('zh', 'attention', count=3))
 
     def test_native_source_has_no_app_id_or_window_title_mutation_or_lookup(self):
@@ -478,7 +455,7 @@ class NativeLanguageTests(unittest.TestCase):
             self.assertEqual(namespace['native_message'](locale, 'missing-key'), 'missing-key')
         namespace['_locales']['en'].pop('attention')
         self.assertEqual(namespace['native_message']('en', 'attention', count=3), 'DSH：3 个主会话待查看')
-        self.assertIn('Multiple DSH windows', namespace['native_message']('en', 'ambiguous'))
+        self.assertIn('requires Windows', namespace['native_message']('en', 'platform'))
 
     def test_taskbar_constructor_defaults_and_fallback_without_loading_win32(self):
         namespace = load_native()

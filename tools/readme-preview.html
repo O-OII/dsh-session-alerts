@@ -17,7 +17,7 @@ const en = /^en(?:[-_.]|$)/i.test(String(selected));
 const kind = ['assets','states','flow'].includes(params.get('view')) ? params.get('view') : 'assets';
 const t = (zh, english) => en ? english : zh;
 const icon = (name, size='') => `<img src="../assets/badges/${name}.ico" alt="${name==='99plus'?'99+':name}" ${size}>`;
-const title = {assets:t('附带的图标，原样预览。','Bundled artwork. Exactly as shipped.'),states:t('从 1 到 99+，关注主会话。','From 1 to 99+. Count main sessions.'),flow:t('后台累计，切回清零。','Accumulate away. Clear on return.')}[kind];
+const title = {assets:t('附带的图标，原样预览。','Bundled artwork. Exactly as shipped.'),states:t('从 1 到 99+，关注主会话。','From 1 to 99+. Count main sessions.'),flow:t('查看一个，只减一个。','Read one result. Subtract one.')}[kind];
 document.documentElement.lang = en ? 'en' : 'zh-CN';
 document.title = title;
 let content = '';
@@ -31,11 +31,11 @@ if(kind==='assets'){
   ].map(([n,asset,heading,body,file])=>`<section class="card"><div class="state-top"><div><div class="small">${t('待查看主会话','Pending main sessions')}</div><div class="count">${n}</div></div>${icon(asset)}</div><h2>${heading}</h2><p>${body}</p><div class="state-code">${t('显示资产','Display asset')} → ${file}</div></section>`).join('')}</div>`;
 }else{
   content = `<div class="grid flow">${[
-    [t('01 · 后台','01 · BACKGROUND'),'1',t('主会话 A 完成','Main session A finishes'),t('一个主会话待查看。','One main session pending.')],
-    [t('02 · 仍在后台','02 · STILL AWAY'),'2',t('主会话 B 等待输入','Main session B awaits input'),t('不同主会话加入，计数变为 2。','A distinct session joins; the count becomes 2.')],
-    [t('03 · 切回 DSH','03 · RETURN TO DSH'),'0',t('确认全部待查看会话','Acknowledge all pending'),t('精确匹配的应用窗口获得焦点，清零。','Focus a window of the exact configured app to clear.')],
-    [t('04 · 再次离开','04 · LEAVE AGAIN'),'0',t('旧事件不重放','No replay of old events'),t('没有新事件，就保持无角标。','No new events means no badge.')]
-  ].map(([step,n,heading,body])=>`<section class="card"><div class="step-number">${step}</div><div class="step-icon">${n==='0'?`<span class="zero">0</span><span class="zero-label">${t('无覆盖角标','No overlay')}</span>`:icon(n)}</div><h2>${heading}</h2><p>${body}</p></section>`).join('')}</div><div class="sizes">${t('窗口级确认，不是逐会话未读；前台事件不累计。','Window-level acknowledgement, not per-session unread; foreground events do not accumulate.')}</div>`;
+    [t('01 · 五个未读','01 · FIVE UNREAD'),'5',t('五个主会话完成','Five main sessions finish'),t('不同主会话各计一次。','Each distinct session counts once.')],
+    [t('02 · 前台 A','02 · FOREGROUND A'),'5',t('仅切回不会清零','Focus alone clears nothing'),t('停在旧内容，仍有五个未读。','Old content remains; five unread.')],
+    [t('03 · 查看新结果','03 · VIEW RESULT'),'4',t('A 最新页脚进入视口','A newest footer is visible'),t('精确版本确认，只减去 A。','Exact revision receipt reads only A.')],
+    [t('04 · 其余保留','04 · OTHERS REMAIN'),'4',t('B 到 E 仍未读','B through E remain unread'),t('查看旧轮次不能确认新结果。','An old turn cannot read a newer result.')]
+  ].map(([step,n,heading,body])=>`<section class="card"><div class="step-number">${step}</div><div class="step-icon">${n==='0'?`<span class="zero">0</span><span class="zero-label">${t('无覆盖角标','No overlay')}</span>`:icon(n)}</div><h2>${heading}</h2><p>${body}</p></section>`).join('')}</div><div class="sizes">${t('逐会话精确版本确认；前台其他会话完成仍累计。','Per-session exact revision receipts; other foreground sessions still count.')}</div>`;
 }
 document.getElementById('preview').innerHTML = `<header class="header"><img class="app" src="../icon.svg" alt="DSH badge project icon"><div class="eyebrow">${t('DSH · 原生任务栏数字角标','DSH · NATIVE TASKBAR BADGE')}</div><div class="scope">${kind==='assets'?t('资产预览','ASSET PREVIEW'):t('行为示意','BEHAVIOR DIAGRAM')}</div></header><h1>${title}</h1><p>${kind==='assets'?t('直接读取仓库 ICO 文件；浅深底用于观察轮廓，不模拟任务栏。','Directly loads repository ICO files; light and dark surfaces reveal edges, not a taskbar.'):t('基于既有计数规则的说明卡，不模拟 Windows 桌面界面。','Explanation cards for the existing counting policy, not a simulated Windows desktop.')}</p>${content}<footer class="footer"><strong>${t('浏览器渲染 · 非 Windows 桌面实测截图','Browser-rendered · Not a Windows desktop screenshot')}</strong><span>${kind==='assets'?t('项目原生资产 · 未重绘','Original project assets · Unmodified'):t('示意流程 · 非实时运行状态','Illustrative policy · Not live runtime state')}</span></footer>`;
 window.previewReady = (async()=>{

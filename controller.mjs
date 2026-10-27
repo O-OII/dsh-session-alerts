@@ -1,14 +1,16 @@
 /** DSH event adapter: pure badge state + live committed events, never history scans. */
 import { createState, reduce, count } from './state.mjs';
+import { randomUUID } from 'node:crypto';
 
 export function createController({ onCount = () => {}, onChange = () => {}, enabled = true,
   notifyOnError = true, notifyOnWaiting = true, notifyOnGoalRounds = false } = {}) {
-  let state = createState({ enabled, focused: true }); // fail closed until native foreground check
+  let state = createState({ enabled });
+  const epoch = randomUUID(); // Never accept receipts from a previous mount/Host.
   let serial = 0;
   let observed = 0;
   const executions = new WeakMap();
   const snapshot = () => ({
-    enabled: state.enabled, focused: state.focused, pendingCount: count(state),
+    enabled: state.enabled, pendingCount: count(state),
     trackedSessions: state.sessions.size, pendingSessions: state.pending.size, observedActions: observed,
   });
   function dispatch(action) {
@@ -24,17 +26,27 @@ export function createController({ onCount = () => {}, onChange = () => {}, enab
   function identity(session) {
     const sessionId = session?.id ?? session?.header?.id;
     const delegationDepth = session?.header?.delegationDepth ?? 0;
-    if ((typeof sessionId !== 'string' && typeof sessionId !== 'number') || delegationDepth !== 0) return null;
+    if ((typeof sessionId !== 'string' && typeof sessionId !== 'number') || delegationDepth !== 0 || session?.header?.origin === 'subagent') return null;
     return { sessionId, delegationDepth };
   }
   return {
     snapshot,
-    focus(focused) { dispatch({ type: 'focus', focused: Boolean(focused) }); },
+    pendingFor(sessionId) {
+      const item = state.pending.get(String(sessionId));
+      return item ? { ...item, revision: `${epoch}:${item.revision}`, sessionId: String(sessionId) } : null;
+    },
+    acknowledge({ sessionId, revision, turn, eventSeq, kind } = {}) {
+      const pending = state.pending.get(String(sessionId));
+      if (!pending || typeof revision !== 'string' || revision !== `${epoch}:${pending.revision}` ||
+          kind !== pending.kind || turn !== pending.turn || eventSeq !== pending.eventSeq) return false;
+      dispatch({ type: 'read', sessionId, revision: pending.revision });
+      return true;
+    },
     setEnabled(value) { dispatch({ type: 'enabled', enabled: Boolean(value) }); },
     sessionEvent(session, event, projection = {}) {
       const id = identity(session);
       if (!id || !event) return;
-      const common = { ...id, turn: event.data?.turn ?? projection.turn };
+      const common = { ...id, turn: event.data?.turn ?? projection.turn, eventSeq: event.seq };
       switch (event.type) {
         case 'turn/start':
           dispatch({ ...common, type: 'turn/start' });

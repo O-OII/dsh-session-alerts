@@ -2,40 +2,46 @@
 
 [简体中文](./README.zh-CN.md) · [MIT](./LICENSE)
 
-A quiet, Windows-native numeric taskbar badge for DeepSeek Harness Desktop.
+A quiet Windows-native numeric taskbar badge for DeepSeek Harness Desktop, with **per-session unread results**.
 
-## Keep working; check back when needed
+## One session, one count — read one, subtract one
 
-Run several main sessions, switch to your editor, and see when DSH needs attention.
+- **Quiet:** no toast, sound, focus stealing, ASAR patch or application-identity changes.
+- **Deduplicated:** each main session counts once, even with repeated completion/error events or several input requests. Subagents are excluded.
+- **Actually viewed:** a result is acknowledged only when its official Chat result footer is rendered in the active main session, intersects the viewport, and the page is visible and focused.
+- **Revision-safe:** the client sends the exact session, turn, turn-end event sequence and Host-issued revision. A delayed read cannot clear a newer result.
+- **Foreground counts too:** while you view A, a result in B still adds one. With five unread sessions, viewing one newest result changes **5 → 4**, never 5 → 0.
 
-- **Quiet by design:** no toast, sound or focus stealing.
-- **One session, one count:** completion, errors and requests for your input, deduplicated.
-- **Return to clear:** focus DSH to acknowledge the whole pending count.
-- **Independent plugin:** no ASAR patching or application-identity changes.
+There is **no window-clear mode, old-mode switch or compatibility acknowledgement path**. Merely focusing DSH, opening a session, viewing an older turn, reconnecting or refreshing the page does not clear unrelated unread results.
+
+### Real Windows taskbar captures — controlled native probes
+
+| Native probe value: 5 | Native probe value: 4 |
+| --- | --- |
+| ![Real Windows taskbar showing the DSH native badge 5](docs/images/native-badge-5.png) | ![Real Windows taskbar showing the DSH native badge 4](docs/images/native-badge-4.png) |
+
+*Actual 210 × 48-pixel taskbar-region captures with DSH in the foreground. The native helper received controlled probe values 5 and 4 on the same DSH window; both COM calls returned success (`HRESULT 0`). These prove native shell rendering, not five real model tasks or an end-to-end client read-acknowledgement transition. The 5 → 4 unread-state behavior is verified separately by isolated integration tests.*
+
+<details>
+<summary>Supplementary bundled-artwork preview — illustration, not a desktop screenshot</summary>
 
 ![Bundled geometric ICO artwork on light and dark surfaces](docs/images/badge-assets-en.png)
 
-*Browser-rendered asset previews and behavior diagrams; not Windows desktop acceptance screenshots.*
+</details>
 
 ## What the number means
 
-In the background, each main session counts once when it completes, fails, is blocked, reaches its output limit, waits for approval or calls `ask_user_question`. Subagents do not count.
+Eligible live main-session results: completion, error, blocked and output-limit endings. With `notifyOnWaiting`, unresolved approval/question requests also keep their session counted until answered or decided; **view-only acknowledgement of pending questions is not implemented**. Reading an older result never resolves a pending request, and resolving a request never discards an unread result. Display is `1`–`99`, then `99+`.
 
-![Badge states for 1, 12 and more than 99 pending main sessions](docs/images/badge-states-en.png)
-
-The display runs from `1` to `99`, then `99+`. Focusing any window of the exact configured DSH executable clears all pending sessions: **window-level acknowledgement, not per-session unread tracking**. Foreground events do not accumulate; leaving again or restarting does not replay history.
-
-![Background accumulation, focus acknowledgement and no replay](docs/images/badge-flow-en.png)
-
-Cancellation and restored history do not notify; completed intermediate rounds of an active goal are filtered by default. See [counting details](docs/behavior.md).
+Cancellation and restored history do not create notifications. Intermediate successful rounds of an active goal are filtered by default. Unread state lives in Host memory: it survives browser/window disconnect, page refresh and helper restart, **not Host restart or plugin disable/re-enable**. No history replay or persistent-unread claim. See [behavior and limitations](docs/behavior.md).
 
 ## Requirements
 
-**Windows 10/11**, Explorer and a visible DSH taskbar button; **Python 3.10+** for Windows; **Node 22+**; DSH **`>=0.2.1-rc.2 <0.3.0`** with official `subprocess` and `sessionProjections` services. See [compatibility](docs/operations.md).
+**Windows 10/11**, Explorer and a visible DSH taskbar button; trusted Windows **Python 3.10+**; **Node 22+**; DSH **`>=0.2.1-rc.2 <0.3.0`** with official `subprocess`, `sessionProjections`, `connection`, `webServer` and the client Chat/Session/Conversation/Slot services. The package includes its official browser contribution. Other conversation targets do not auto-acknowledge results. See [compatibility](docs/operations.md).
 
 ## Install from source
 
-Clone or download this repository, then open PowerShell in its directory. Use the official CLI shipped with **your current DSH Desktop installation**:
+Use the official CLI from **your current Desktop installation**. This is a manual installation step; repository tests do not change your live profile.
 
 ```powershell
 $DshCli = Read-Host 'Full path to resources\runtime\cli\bin\dsh.cmd in your DSH installation'
@@ -43,20 +49,20 @@ $Project = (Resolve-Path .).Path
 & $DshCli plugin --profile desktop add --ignore-scripts $Project
 ```
 
-Keep the source directory in place if the CLI creates a local link. Disable any older badge plugin before enabling this one. [Install, disable and uninstall](docs/operations.md).
+Keep the checkout if the CLI creates a local link. Disable any other badge provider before enabling this one. After installing/updating the browser contribution, refresh your existing DSH page if it has not loaded the new contribution. [Operations and rollback](docs/operations.md).
 
-## Settings
+## Settings and development
 
-**Simplified Chinese is the default and fallback.** Choose `language: en` for English; only explicit `auto` follows environment language.
+**Simplified Chinese is the default and fallback.** Use `language: en` for English; only explicit `auto` follows environment language. Set exact `desktopExecutable` and trusted `pythonPath` if discovery cannot find them. [Configuration](docs/configuration.md).
 
-If discovery cannot find both programs, set `desktopExecutable` to the exact DSH desktop `.exe` and `pythonPath` to a trusted Python 3.10+ `.exe`, using existing absolute Windows paths. These are not the CLI or Node executable. See [paths and settings](docs/configuration.md).
+```powershell
+npm run build
+npm test
+npm run test:python
+npm run test:pack
+```
 
-## More
-
-- [Troubleshooting and rollback](docs/operations.md#troubleshoot-safely)
-- [Testing and verification](docs/verification.md) · [Image reproduction](docs/images.md)
-- [Approach comparison](docs/alternatives.md)
-- [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Asset provenance](ASSET-PROVENANCE.md)
+Build and tests need no npm/pip dependency installation, paid model calls, live profile edits or native taskbar access. [Test evidence and limitations](docs/verification.md) · [Images](docs/images.md) · [Alternatives](docs/alternatives.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Asset provenance](ASSET-PROVENANCE.md).
 
 ## License
 

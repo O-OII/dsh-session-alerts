@@ -5,19 +5,20 @@
 Use Node 22+ and existing Python 3.10+. No npm/pip dependencies or network are required:
 
 ```text
-node --experimental-vm-modules --test test/*.test.mjs
+npm run build
+npm test
 python -B -m unittest discover -s test -p test_*.py -v
 python -B tools/generate-assets.py
 npm run test:pack
 ```
 
-Keep tests fake: do not instantiate the real Windows Taskbar class, touch a live DSH profile, install/uninstall a plugin, edit shortcuts/AppUserModelID/protocols, kill applications or send COM overlays as part of a unit test. Native helper entry is intentionally not a CI command. Preserve the original five suites and their behavioural coverage (63 JavaScript + 29 Python baseline), including crash/disposal, focus acknowledgement, Explorer recovery, approvals/questions, goal filtering and subagent exclusion. Add cases for any changed event shape or discovery path.
+Keep tests fake: do not instantiate the real Windows Taskbar class, touch a live DSH profile, install/uninstall a plugin, edit shortcuts/AppUserModelID/protocols, kill applications or send COM overlays as part of a unit test. Native helper entry is intentionally not a CI command. Preserve the original five suites and their behavioural coverage (63 JavaScript + 29 Python baseline), including crash/disposal, per-session revision acknowledgement and client visibility/reconnect races, Explorer recovery, approvals/questions, goal filtering and subagent exclusion. Add cases for any changed event shape or discovery path.
 
 Windows GUID layout uses fixed-width ctypes, because Linux's `wintypes.DWORD` can have a different size. Fake Host tests explicitly inject Windows platform/path/file services on every OS; no real helper is spawned. CI checks Windows and Linux **fake** logic only.
 
 ## Internationalization
 
-[English](./locale/en.json) and [Chinese](./locale/zh.json) catalogs must have identical leaf keys and interpolation names. Keep the package-owned namespace `dsh-native-taskbar-badge`; never register strings under another plugin's namespace. This host-only plugin does not import a client locale service. [Schema metadata](./config.mjs) explicitly consumes `config` catalog fields using the official [Schemastery i18n contract](https://github.com/deepseek-ai/deepseek-harness/blob/master/vendor/schemastery/src/index.ts): localized description includes a human-friendly label and explanation; a Simplified Chinese description is the generic default/fallback while explicit English descriptions remain available. Plugin manager `meta.title`/`meta.description` are exported through the package locale convention, separate from schema fields.
+[English](./locale/en.json) and [Chinese](./locale/zh.json) catalogs must have identical leaf keys and interpolation names. Keep the package-owned namespace `dsh-native-taskbar-badge`; never register strings under another plugin's namespace. The client contribution renders no user-facing text and does not import a client locale service. [Schema metadata](./config.mjs) explicitly consumes `config` catalog fields using the official [Schemastery i18n contract](https://github.com/deepseek-ai/deepseek-harness/blob/master/vendor/schemastery/src/index.ts): localized description includes a human-friendly label and explanation; a Simplified Chinese description is the generic default/fallback while explicit English descriptions remain available. Plugin manager `meta.title`/`meta.description` are exported through the package locale convention, separate from schema fields.
 
 Diagnostic language is selected independently by `language`, defaulting to `zh` without consulting environment variables. Preserve explicit `en` and opt-in `auto` (LC_ALL → LC_MESSAGES → LANG), falling back to Simplified Chinese for absent/unsupported locales and missing translation keys. Keep JS and Python resolution consistent; low-level OS/provider/standard-library errors are preserved rather than misleadingly translated. New messages must have Simplified Chinese fallback and a matching English catalog entry. Real packaging tests use an existing npm offline and confine archive/cache/extraction to ignored `artifacts/`; they do not install anything. Do not persist session titles/content as a debugging convenience.
 
@@ -27,9 +28,9 @@ Before claiming a release is desktop-verified, use an isolated, privacy-free Win
 
 Record OS/DSH/Node/Python versions, taskbar mode, display scaling, exact test scope and whether any calls were mocked. Verify:
 
-- 1, 2 and 99+ rendering and foreground clearing;
+- 1, 2 and 99+ rendering; foreground A while B completes; five unread sessions become four only when one newest result is actually exposed;
 - no replay after blur, no child-agent counts, approval/question resolution and goal-round filtering;
-- exact executable rejection of foreign windows, ambiguity refusal;
+- exact executable rejection of foreign windows and same aggregate on matching windows;
 - disable/uninstall clearing and zero remaining owned helpers;
 - helper crash retry limit and Explorer recreation recovery, **only in an isolated environment where this is safe**;
 - no sound, Toast, focus steal or identity/shortcut/protocol changes.
@@ -38,7 +39,7 @@ The original deployment's probes are not proof that the new font-free artwork or
 
 ## Screenshot preparation
 
-This project ships no actual desktop screenshot. To prepare one later, arrange a clean disposable desktop, synthetic names/counts and a dedicated test app; hide/redact unrelated apps, wallpaper details, personal paths, account names and clocks if identifying. Capture enough native taskbar context to prove placement. Label the OS, scaling and capture scope. Review the image independently before publication.
+The separately captured native probe screenshots and their limited evidence scope are documented in [image provenance](docs/images.md). To prepare further screenshots, arrange a clean disposable desktop, synthetic names/counts and a dedicated test app; hide/redact unrelated apps, wallpaper details, personal paths, account names and clocks if identifying. Capture enough native taskbar context to prove placement. Label the OS, scaling and capture scope. Review the image independently before publication.
 
 An artwork preview/diagram made from the included icons is welcome, but visibly label **“Illustration — not an actual desktop screenshot / 示意图，非实际桌面截图”** in the image and caption. A collage of tiny test icons is not evidence of GUI operation. Do not publish the local source's historical screenshots or verification artifacts.
 

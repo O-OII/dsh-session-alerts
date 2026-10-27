@@ -12,38 +12,43 @@ function setup(options = {}) {
   return { controller, counts, snapshots };
 }
 
-test('controller starts fail-closed until native focus feedback arrives', () => {
+test('controller counts before native readiness; focus is not an API', () => {
   const { controller, counts } = setup();
-  const main = session();
-  controller.sessionEvent(main, begin());
-  controller.sessionEvent(main, finish());
-  assert.equal(controller.snapshot().focused, true);
-  assert.equal(controller.snapshot().pendingCount, 0);
-  controller.focus(false);
-  assert.equal(controller.snapshot().pendingCount, 0);
-  assert.deepEqual(counts, []);
+  controller.sessionEvent(session(), begin()); controller.sessionEvent(session(), finish());
+  assert.equal(controller.snapshot().pendingCount, 1);
+  assert.equal(controller.focus, undefined); assert.deepEqual(counts, [1]);
 });
-
-test('background main completion counts and foreground feedback clears all', () => {
+test('five sessions become four only through one exact read revision', () => {
   const { controller, counts } = setup();
-  controller.focus(false);
-  for (const id of ['one', 'two']) {
-    controller.sessionEvent(session(id), begin());
-    controller.sessionEvent(session(id), finish());
+  for (const id of ['a','b','c','d','e']) {
+    controller.sessionEvent(session(id), begin()); controller.sessionEvent(session(id), finish());
   }
-  assert.equal(controller.snapshot().pendingCount, 2);
-  controller.focus(true);
-  assert.equal(controller.snapshot().pendingCount, 0);
-  controller.focus(false);
-  controller.sessionEvent(session('one'), finish());
-  assert.equal(controller.snapshot().pendingCount, 0);
-  assert.deepEqual(counts, [1, 2, 0]);
+  const receipt = controller.pendingFor('c');
+  assert.equal(controller.acknowledge(receipt), true);
+  assert.equal(controller.snapshot().pendingCount, 4);
+  assert.equal(controller.acknowledge(receipt), false);
+  controller.sessionEvent(session('c'), finish());
+  assert.equal(controller.snapshot().pendingCount, 4);
+  assert.deepEqual(counts, [1,2,3,4,5,4]);
+});
+test('old revision, other session, old epoch and stale seq cannot read a new result', () => {
+  const { controller } = setup(); const main = session();
+  controller.sessionEvent(main, begin()); controller.sessionEvent(main, finish());
+  const old = controller.pendingFor('main');
+  controller.sessionEvent(main, begin(2)); controller.sessionEvent(main, finish('completed',2));
+  assert.equal(controller.acknowledge(old), false);
+  const current = controller.pendingFor('main');
+  for (const bad of [{...current,sessionId:'other'},{...current,revision:old.revision},
+    {...current,eventSeq:99},{...current,turn:1}]) assert.equal(controller.acknowledge(bad),false);
+  const restarted = createController();
+  restarted.sessionEvent(main, begin(2)); restarted.sessionEvent(main, finish('completed',2));
+  assert.equal(restarted.acknowledge(current),false);
+  assert.equal(controller.acknowledge(current),true);
 });
 
 test('question execution uses stable token, dedupes repeat, resolution pairs once', () => {
   const { controller, counts } = setup();
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin());
   const exec = { name: 'ask_user_question', callId: 'call-1', agent: { session: main } };
   const token = controller.questionStarted(exec, { turn: 1 });
@@ -58,7 +63,6 @@ test('question execution uses stable token, dedupes repeat, resolution pairs onc
 test('question completion replaces waiting; finally resolution cannot clear completed badge', () => {
   const { controller, counts } = setup();
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin());
   const token = controller.questionStarted({ name: 'ask_user_question', callId: 'call-1', agent: { session: main } }, { turn: 1 });
   controller.sessionEvent(main, finish('error'));
@@ -70,7 +74,6 @@ test('question completion replaces waiting; finally resolution cannot clear comp
 test('different execution tokens sharing model-authored question ids remain independent', () => {
   const { controller } = setup();
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin());
   const make = callId => ({ name: 'ask_user_question', callId, arguments: { questions: [{ id: 'reused-model-id' }] }, agent: { session: main } });
   const first = controller.questionStarted(make('first'), { turn: 1 });
@@ -83,7 +86,6 @@ test('different execution tokens sharing model-authored question ids remain inde
 
 test('local tokens are unique for executions without ids', () => {
   const { controller } = setup();
-  controller.focus(false);
   const main = session();
   const first = controller.questionStarted({ name: 'ask_user_question', agent: { session: main } }, { turn: 1 });
   const second = controller.questionStarted({ name: 'ask_user_question', agent: { session: main } }, { turn: 1 });
@@ -97,7 +99,6 @@ test('local tokens are unique for executions without ids', () => {
 test('stale finally resolution from earlier turn cannot remove later waiting', () => {
   const { controller } = setup();
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin());
   const old = controller.questionStarted({ name: 'ask_user_question', callId: 'reused', agent: { session: main } }, { turn: 1 });
   controller.sessionEvent(main, finish());
@@ -110,7 +111,6 @@ test('stale finally resolution from earlier turn cannot remove later waiting', (
 test('approval events use projection turn and coexist with question waits', () => {
   const { controller, counts } = setup();
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin(7));
   controller.sessionEvent(main, event('approval/asked', { id: 'same' }), { turn: 7 });
   const question = controller.questionStarted({ name: 'ask_user_question', callId: 'same', agent: { session: main } }, { turn: 7 });
@@ -124,7 +124,6 @@ test('approval events use projection turn and coexist with question waits', () =
 test('notifyOnWaiting false suppresses both approvals and questions but not completion', () => {
   const { controller } = setup({ notifyOnWaiting: false });
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin());
   controller.sessionEvent(main, event('approval/asked', { id: 'approval' }), { turn: 1 });
   assert.equal(controller.questionStarted({ name: 'ask_user_question', agent: { session: main } }, { turn: 1 }), null);
@@ -136,8 +135,7 @@ test('notifyOnWaiting false suppresses both approvals and questions but not comp
 test('notifyOnError false clears an old wait without alerting on error endings', () => {
   for (const reason of ['error', 'blocked', 'max-tokens']) {
     const { controller } = setup({ notifyOnError: false });
-    controller.focus(false);
-    const main = session();
+      const main = session();
     controller.sessionEvent(main, begin());
     controller.sessionEvent(main, event('approval/asked', { id: 'approval' }), { turn: 1 });
     assert.equal(controller.snapshot().pendingCount, 1);
@@ -149,7 +147,6 @@ test('notifyOnError false clears an old wait without alerting on error endings',
 test('active goal intermediate completed turns suppressed; goal completion/error still alerts', () => {
   const { controller } = setup();
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin());
   controller.sessionEvent(main, finish(), { turn: 1, goalPhase: 'active' });
   assert.equal(controller.snapshot().pendingCount, 0);
@@ -163,7 +160,6 @@ test('active goal intermediate completed turns suppressed; goal completion/error
 
 test('notifyOnGoalRounds true includes active goal completion rounds', () => {
   const { controller } = setup({ notifyOnGoalRounds: true });
-  controller.focus(false);
   controller.sessionEvent(session(), begin());
   controller.sessionEvent(session(), finish(), { turn: 1, goalPhase: 'active' });
   assert.equal(controller.snapshot().pendingCount, 1);
@@ -171,7 +167,6 @@ test('notifyOnGoalRounds true includes active goal completion rounds', () => {
 
 test('history/cancel/subagents never create badges', () => {
   const { controller } = setup();
-  controller.focus(false);
   for (const reason of ['interrupted', 'forked', 'aborted']) {
     const main = session(reason);
     controller.sessionEvent(main, begin());
@@ -187,7 +182,6 @@ test('history/cancel/subagents never create badges', () => {
 test('disable clears and re-enable does not replay disabled-time completion', () => {
   const { controller, counts } = setup();
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin());
   controller.sessionEvent(main, finish());
   controller.setEnabled(false);
@@ -199,21 +193,21 @@ test('disable clears and re-enable does not replay disabled-time completion', ()
   assert.deepEqual(counts, [1, 0]);
 });
 
-test('dispose clears main session and late completion cannot recreate its badge', () => {
+test('object disposal retains unread terminal and rejects late completion', () => {
   const { controller } = setup();
   const main = session();
-  controller.focus(false);
   controller.sessionEvent(main, begin());
   controller.sessionEvent(main, finish());
+  const receipt = controller.pendingFor('main');
   controller.sessionDisposed(main);
   controller.sessionEvent(main, finish());
+  assert.equal(controller.snapshot().pendingCount, 1);
+  assert.equal(controller.acknowledge(receipt), true);
   assert.equal(controller.snapshot().pendingCount, 0);
-  assert.equal(controller.snapshot().trackedSessions, 0);
 });
 
 test('numeric zero session id and missing metadata are handled safely', () => {
   const { controller } = setup();
-  controller.focus(false);
   controller.sessionEvent(session(0), begin());
   controller.sessionEvent(session(0), finish());
   controller.sessionEvent(null, finish());
