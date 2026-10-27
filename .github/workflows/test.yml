@@ -26,7 +26,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      # Setup actions provision CI runtimes; project tests have no network/dependency installs.
+      # Provision the pinned artwork DEVELOPMENT dependency, never a runtime dependency.
+      - name: Install artwork development dependency
+        run: python -m pip install -r tools/requirements-assets.txt
+      # Tests and generation are offline after provisioning; native.py never imports Pillow.
       # A Windows runner is NOT live Windows taskbar coverage. Never invoke native.py here.
       - name: Node fake host, reducer, path and localization tests
         run: npm test

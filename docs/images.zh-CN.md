@@ -4,7 +4,7 @@
 
 ## 原生探测截图
 
-README 中的[角标 5](images/native-badge-5.png) 和[角标 4](images/native-badge-4.png) 为另行捕获的真实 Windows 任务栏区域，每张 210 × 48 像素，DSH 位于前台；保留原始捕获像素，不是合成任务栏。同一 DSH 窗口由 helper 输入受控值 5 和 4，两次 COM 均返回 `HRESULT 0`。它们证明这些探测值的真实绘制，不代表五个真实模型任务、已读确认全链路或 DPI/Explorer 兼容矩阵；5 → 4 状态逻辑另有隔离集成测试证据。
+README 中的[角标 5](images/native-badge-5.png) 和[角标 4](images/native-badge-4.png) 为另行捕获的真实 Windows 任务栏区域，每张 132 × 48 像素，DSH 位于前台；保留原始捕获像素，不是合成任务栏。同一 DSH 窗口由 helper 输入受控值 5 和 4，两次 COM 均返回 `HRESULT 0`。它们证明这些探测值的真实绘制，不代表五个真实模型任务、已读确认全链路或 DPI/Explorer 兼容矩阵；5 → 4 状态逻辑另有隔离集成测试证据。
 
 ## 预览源
 

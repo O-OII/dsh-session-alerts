@@ -2,7 +2,7 @@
 
 ## Safe local development
 
-Use Node 22+ and existing Python 3.10+. No npm/pip dependencies or network are required:
+Use Node 22+ and Python 3.10+. The installed helper remains standard-library-only. For asset regeneration/Python asset tests, provision the pinned **development-only** Pillow renderer with `python -m pip install -r tools/requirements-assets.txt`; then the commands below run offline. Never import Pillow from runtime code or add unknown/system/private fonts:
 
 ```text
 npm run build

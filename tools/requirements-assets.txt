@@ -1,0 +1,3 @@
+# DEVELOPMENT ONLY. Never imported by the installed native helper.
+# No font dependency: badge glyph paths are independently authored in the generator.
+Pillow==12.3.0

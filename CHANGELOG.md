@@ -1,5 +1,13 @@
 # Changelog / 更新记录
 
+## 0.2.2 — 2026-10-27 (artwork-only source update)
+
+- Replace 3×5 block numerals with independently authored rounded cubic-Bezier strokes, round caps/joins, dark single-number circles and multi-character capsules; transparent antialiased outskirts. No fonts or copied font outlines.
+- Rasterize each 16/24/32/48/64 px DIB independently at 8× resolution with pinned development-only Pillow and LANCZOS reduction. Runtime helper remains standard-library-only and unchanged.
+- Validate all 100 ICO containers, representative byte-for-byte regeneration, alpha edges, contrast and actual 32/64→16 reductions. Native taskbar acceptance is separate from generated previews.
+- Unread, client/RPC, authentication and Host/helper lifecycle logic are unchanged; only the diagnostic version constant advances with package metadata.
+- 中文：仅重设计资产为原创圆润贝塞尔数字及圆/胶囊深底、透明平滑外缘，100个ICO保留五种独立渲染尺寸。Pillow为固定版本开发依赖，不引入字体或运行依赖；增加原生小尺寸/实际缩小回归。未读、RPC、认证及生命周期逻辑不改，只同步诊断版本常量。
+
 ## 0.2.1 — 2026-10-27 (local source update, not published)
 
 - Fix actual Cordis service-getter shadow ownership: adding consumer `webServer` injection alone was insufficient. Register through public `ctx.extend({ webServer: ctx.webServer })` and explicitly own the returned route disposer with `ctx.effect`. No private symbols, provider mutation or authentication bypass.

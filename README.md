@@ -4,6 +4,8 @@
 
 A quiet Windows-native numeric taskbar badge for DeepSeek Harness Desktop, with **per-session unread results**.
 
+**0.2.2 artwork:** original rounded Bezier numerals, dark circular/capsule backgrounds and transparent antialiased edges. Each ICO includes 16/24/32/48/64 px artwork; no system or bundled font is used. The verified unread/RPC behavior is unchanged.
+
 ## One session, one count — read one, subtract one
 
 - **Quiet:** no toast, sound, focus stealing, ASAR patch or application-identity changes.
@@ -20,10 +22,10 @@ There is **no window-clear mode, old-mode switch or compatibility acknowledgemen
 | --- | --- |
 | ![Real Windows taskbar showing the DSH native badge 5](docs/images/native-badge-5.png) | ![Real Windows taskbar showing the DSH native badge 4](docs/images/native-badge-4.png) |
 
-*Actual 210 × 48-pixel taskbar-region captures with DSH in the foreground. The native helper received controlled probe values 5 and 4 on the same DSH window; both COM calls returned success (`HRESULT 0`). These prove native shell rendering, not five real model tasks or an end-to-end client read-acknowledgement transition. The 5 → 4 unread-state behavior is verified separately by isolated integration tests.*
+*Actual 132 × 48-pixel taskbar-region captures with DSH in the foreground. The native helper received controlled probe values 5 and 4 on the same DSH window; both COM calls returned success (`HRESULT 0`). These prove native shell rendering, not five real model tasks or an end-to-end client read-acknowledgement transition. The 5 → 4 unread-state behavior is verified separately by isolated integration tests.*
 
 <details>
-<summary>Supplementary bundled-artwork preview — illustration, not a desktop screenshot</summary>
+<summary>Historical 0.2.1 block-digit comparison — not the current 0.2.2 artwork or a desktop screenshot</summary>
 
 ![Bundled geometric ICO artwork on light and dark surfaces](docs/images/badge-assets-en.png)
 
@@ -62,7 +64,7 @@ npm run test:python
 npm run test:pack
 ```
 
-Build and tests need no npm/pip dependency installation, paid model calls, live profile edits or native taskbar access. [Test evidence and limitations](docs/verification.md) · [Images](docs/images.md) · [Alternatives](docs/alternatives.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Asset provenance](ASSET-PROVENANCE.md).
+The installed plugin has no Pillow/font dependency. Artwork regeneration and the Python asset tests need the development-only dependency provisioned with `python -m pip install -r tools/requirements-assets.txt`; after provisioning they run offline. No paid model calls, live profile edits or native taskbar access are used by tests. [Test evidence and limitations](docs/verification.md) · [Images](docs/images.md) · [Alternatives](docs/alternatives.md) · [Contributing](CONTRIBUTING.md) · [Security](SECURITY.md) · [Asset provenance](ASSET-PROVENANCE.md).
 
 ## License
 

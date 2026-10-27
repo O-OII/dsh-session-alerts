@@ -4,7 +4,7 @@
 
 ## Native probe captures
 
-The README's [badge 5](images/native-badge-5.png) and [badge 4](images/native-badge-4.png) images are separately captured real Windows taskbar regions, each 210 × 48 pixels, with DSH in the foreground. They show unmodified captured pixels, not a synthetic taskbar. The helper was supplied controlled values 5 and 4 on the same DSH window; COM reported `HRESULT 0` for both. They establish native rendering for those probes, not five actual model tasks, an end-to-end read-acknowledgement transition, or a DPI/Explorer compatibility matrix. The 5 → 4 state logic has separate isolated integration-test evidence.
+The README's [badge 5](images/native-badge-5.png) and [badge 4](images/native-badge-4.png) images are separately captured real Windows taskbar regions, each 132 × 48 pixels, with DSH in the foreground. They show unmodified captured pixels, not a synthetic taskbar. The helper was supplied controlled values 5 and 4 on the same DSH window; COM reported `HRESULT 0` for both. They establish native rendering for those probes, not five actual model tasks, an end-to-end read-acknowledgement transition, or a DPI/Explorer compatibility matrix. The 5 → 4 state logic has separate isolated integration-test evidence.
 
 ## Preview sources
 

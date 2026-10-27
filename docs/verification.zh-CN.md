@@ -11,7 +11,13 @@ npm run test:python
 npm run test:pack
 ```
 
-无需 npm/pip 安装依赖。构建把客户端源码和确认驱动确定性包装为官方惰性 loader factory，`npm test` 先校验随包 bundle 与源码一致。实际打包使用已有 npm 的 `pack --ignore-scripts --offline`，压缩包、缓存与解包核验均限制在 ignored `artifacts/`。项目没有依赖，因此没有依赖 lockfile。
+运行时无第三方 Python/字体依赖。资产再生和 Python 资产测试需先以 `python -m pip install -r tools/requirements-assets.txt` 准备固定版本的开发用 Pillow，之后离线运行。构建把客户端源码和确认驱动确定性包装为官方惰性 loader factory，`npm test` 先校验随包 bundle 与源码一致。实际打包使用已有 npm 的 `pack --ignore-scripts --offline`，压缩包、缓存与解包核验均限制在 ignored `artifacts/`。项目没有 npm 运行依赖；独立 artwork requirements 文件固定开发绘制器版本。
+
+## 0.2.2 资产验证
+
+Windows 本机通过 **129 项 JavaScript + 43 项 Python + 3 项离线打包测试**，无失败/跳过。五项资产测试覆盖全部100个五帧ICO结构、原创路径确定性再生、透明角落/抗锯齿、白字深底对比、实际32/64→16缩小，以及运行helper无Pillow/字体导入。再次重生全部100ICO后SHA-256完全一致。原生helper、未读、客户端/RPC及生命周期实现不改，只推进包/诊断版本元数据。
+
+另行实机probe 1/5/4/12/99+均COM成功并经视觉检查。首页现为132×48像素任务栏区域，不承诺周围固定有几个图标；它们只证明绘制，不代表模型任务、所有DPI或已读全链路验收。CI已加仅开发Pillow准备步骤；本机测试未执行远程CI、部署或收费调用。
 
 ## 0.2.1 本机证据
 

@@ -1,25 +1,28 @@
 # Code and asset provenance / 代码与资产来源
 
-## Review scope
+## Project licensing
 
-The authorized local source was inspected before export: README, package/patch, host entry, controller, state reducer, projection, Windows helper, five test suites, both locale catalogs, SVG icon and asset-generation script. No package dependencies, vendored notification library, third-party copyright header or copied license notice were found in that allowlist. This is a scoped source review, not a legal warranty about undisclosed history. Report any contrary attribution evidence before release; preserve the original notice and suspend distribution of the affected file while reviewed.
+The maintainer authorized open-sourcing this project. The [MIT license](./LICENSE) covers the supplied project contributions and independently authored implementation/artwork, © 2026 O-OII contributors. The scoped source review is not a legal warranty about undisclosed history: report contrary attribution evidence and preserve original notices before redistribution.
 
-The maintainer explicitly authorized open-sourcing this project. The [MIT license](./LICENSE) applies to these supplied contributions and the new portability/localization/docs work, © 2026 O-OII contributors. The package's name alone was not treated as evidence of authorship.
+## Rounded artwork — 0.2.2
 
-## Artwork
+- [Numeric generator](./tools/generate-assets.py): independently authored cubic-Bezier digit/plus paths, round stroke ends/joins, circular single-number background and capsule multi-character background. **No font glyphs or outlines were copied or traced.** The paths are readable coordinate data in this repository, not a renamed font or bitmap font.
+- All 100 ICOs are regenerated from those original paths: `1`–`99`, then `99+`. Every icon contains separate **16, 24, 32, 48 and 64 px** 32-bit straight-alpha DIB entries with transparent surroundings. Each size is rasterized independently at 8× resolution and LANCZOS-downsampled. The former 3×5 block-digit recipes are no longer used.
+- **No system/private font, font file, font-derived glyph outline or third-party icon pack is bundled.** No font license/redistribution assumption is needed for the new numerals.
+- [Pillow](https://python-pillow.org/) **12.3.0** is a pinned **development-only rendering dependency**, declared in [artwork requirements](./tools/requirements-assets.txt). It rasterizes our geometry; it contributes no font or icon design. Its source/license is maintained by the [Pillow project](https://github.com/python-pillow/Pillow/blob/main/LICENSE). Pillow is not vendored or declared as a package runtime dependency, and the installed Windows helper still uses only the Python standard library.
+- The ICO/DIB encoder remains project-authored standard-format interoperability code. Windows COM interface names/GUIDs are interoperability identifiers; no Windows executable, SDK library or Microsoft font is distributed.
+- [Application SVG](./icon.svg) is the previously reviewed simple supplied geometry, unchanged by the numeric-artwork redesign. No embedded fonts or external images.
 
-- [Application SVG](./icon.svg): inspected simple vector geometry (rounded panel, three lines and a numeric circle), supplied as original local artwork. No embedded fonts, external images or trademark logo asset.
-- Numeric ICOs in `assets/badges/`: **newly generated for this repository**, not copied from the previous Windows-font-rendered set. The old development script used installed Segoe UI; its glyph redistribution terms were not assumed to be MIT-compatible. Neither those rendered icons nor the font file are exported here.
-- [New generator](./tools/generate-assets.py): independently hand-authored 3×5 geometric digit/plus recipes, circles and a standard ICO/DIB encoder, Python standard library only. No font files, raster icon packs, Pillow or external artwork are needed. Rebuilding produces the same 100 ICOs with 16/24/32/48/64-pixel entries.
-- Windows COM interface names/GUID values are interoperability identifiers, not a bundled implementation. No Microsoft executable, font, SDK or Windows library is distributed.
-- README illustrations: browser screenshots of [the public HTML preview](./tools/readme-preview.html), which directly loads the unchanged repository ICOs and SVG. These are asset previews/behavior diagrams, not Windows desktop screenshots. Explanatory text uses locally installed **Noto Sans SC** (SIL Open Font License); no font file is bundled. No Microsoft font or desktop artwork is used. See [reproduction details](./docs/images.md).
+## Reproduction and evidence
 
-## Deliberately excluded
+Provision `python -m pip install -r tools/requirements-assets.txt` in a development environment, then run `python -B tools/generate-assets.py` offline. Pinning Pillow avoids silent renderer-version changes; CI regenerates and checks committed bytes. `--candidate --output <directory> --preview <png>` creates `1`, `5`, `12` and `99+` ICOs plus a developer comparison containing native 16 px and actual 32→16 reductions. A preview is **not** a Windows screenshot or proof of shell placement.
 
-Private verification/status records, desktop screenshots, session snapshots, backups, private integration modifications, local installation helpers and machine-specific patches are excluded. Only the independent plugin and its reviewed assets are included.
+The separately captured native taskbar images are documented in [image provenance](./docs/images.md). Controlled probe values prove native rendering only, not real model-task counts or end-to-end unread acknowledgement. Legacy asset preview PNGs, where retained for historical comparison, must not be described as the current rounded artwork. The public HTML tools load the current ICO files directly.
 
-## 中文摘要
+Private status records, profiles, session snapshots, backups, credentials and machine-specific integration patches remain excluded.
 
-本次逐项检查了授权提供的源码白名单，未发现第三方库、版权声明或被遗漏的许可证；这不是对未公开历史的法律保证。发现相反来源证据时应立即报告并暂停分发相关文件。用户明确授权开源，MIT 归属为 2026 O-OII contributors，而非仅因包名推定原创。
+## 中文
 
-旧数字资产由 Windows Segoe UI 渲染，其字体授权不作 MIT 兼容推断，因此不复制。此仓库改用全新手绘几何数字和标准库 ICO 编码器，100 项资产可确定性再生，无字体或外部图集。SVG 也已检查，无内嵌字体、外链图片或商标素材。私密验证、状态、截图、备份、快照与私有集成修改均不导出。
+0.2.2 数字由本仓库独立手绘的三次贝塞尔路径生成，圆润笔画、圆端连接、单数字圆底、双位/99+ 胶囊底，外围透明；不再采用 3×5 块状字。没有复制或描摹字体字形/轮廓，不携带系统字体、用户私有字体或第三方图标包。100 个 ICO 各含 16/24/32/48/64 五种独立渲染的 32 位直通 Alpha DIB；8 倍超采样后以 LANCZOS 缩小。
+
+Pillow 12.3.0 仅为固定版本的**开发绘制依赖**，只栅格化自有几何，不提供字形设计；不随运行包 vendoring、不列为运行依赖，原生 helper 仍仅依赖 Python 标准库。项目代码/原创路径沿用 MIT，Pillow 自身许可见上游链接，不把第三方库冒称为项目原创。应用 SVG 未改。候选预览包含真实 16px 和 32→16 缩小对照，但不能冒充实机截图；受控原生截图也不代表模型任务或已读全链路验收。私密 profile、状态、快照及凭据不导出。

@@ -4,6 +4,8 @@
 
 为 DeepSeek Harness Desktop 提供安静的 Windows 原生数字角标，按**主会话未读结果**计数。
 
+**0.2.2 新样式：**原创圆润贝塞尔数字，深色圆形/胶囊底、透明抗锯齿外缘；每个 ICO 含 16/24/32/48/64 像素资产，不使用系统字体或附带字体。已验收的未读/RPC 行为不变。
+
 ## 一个会话只计一次，查看一个只减一
 
 - **安静：**不弹窗、不响铃、不抢焦点，不修改 ASAR 或应用身份。
@@ -20,10 +22,10 @@
 | --- | --- |
 | ![Windows 真实任务栏上 DSH 原生角标显示 5](docs/images/native-badge-5.png) | ![Windows 真实任务栏上 DSH 原生角标显示 4](docs/images/native-badge-4.png) |
 
-*上图为 DSH 位于前台时实际捕获的 210 × 48 像素任务栏区域。同一 DSH 窗口接收原生 helper 的受控探测值 5 和 4，两次 COM 调用均成功（`HRESULT 0`）。它们证明真实 shell 绘制，不代表运行了五个真实模型任务，也不代表客户端已读确认全链路验收；5 → 4 未读状态逻辑另由隔离集成测试验证。*
+*上图为 DSH 位于前台时实际捕获的 132 × 48 像素任务栏区域。同一 DSH 窗口接收原生 helper 的受控探测值 5 和 4，两次 COM 调用均成功（`HRESULT 0`）。它们证明真实 shell 绘制，不代表运行了五个真实模型任务，也不代表客户端已读确认全链路验收；5 → 4 未读状态逻辑另由隔离集成测试验证。*
 
 <details>
-<summary>辅助资产预览——示意图，不是桌面截图</summary>
+<summary>历史 0.2.1 块状字对照——不是当前 0.2.2 资产，也不是桌面截图</summary>
 
 ![附带的几何数字 ICO 在浅色和深色底上的资产预览](docs/images/badge-assets-zh.png)
 
@@ -62,7 +64,7 @@ npm run test:python
 npm run test:pack
 ```
 
-构建和测试无需 npm/pip 安装依赖、收费模型调用、现用 profile 修改或真实任务栏操作。[测试证据与限制](docs/verification.zh-CN.md) · [图片](docs/images.zh-CN.md) · [同类比较](docs/alternatives.zh-CN.md) · [参与开发](CONTRIBUTING.md) · [安全说明](SECURITY.md) · [资产来源](ASSET-PROVENANCE.md)。
+已安装插件不依赖 Pillow/字体。重新生成资产及 Python 资产测试需先在开发环境运行 `python -m pip install -r tools/requirements-assets.txt`，之后离线执行；Pillow 仅限开发，不给 helper 增加依赖。测试不调用收费模型、不改现用 profile、不操作真实任务栏。[测试证据与限制](docs/verification.zh-CN.md) · [图片](docs/images.zh-CN.md) · [同类比较](docs/alternatives.zh-CN.md) · [参与开发](CONTRIBUTING.md) · [安全说明](SECURITY.md) · [资产来源](ASSET-PROVENANCE.md)。
 
 ## 许可
 

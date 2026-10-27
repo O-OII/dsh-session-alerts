@@ -1,6 +1,6 @@
 {
   "name": "dsh-native-taskbar-badge",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "为 DSH Desktop 主会话显示 Windows 原生 COM 任务栏数字角标；不弹窗、不响铃、不抢焦点、不修改 ASAR。",
   "license": "MIT",
   "author": "O-OII contributors",
@@ -33,6 +33,8 @@
     "bridge.mjs",
     "client.js",
     "tools/build-client.mjs",
+    "tools/generate-assets.py",
+    "tools/requirements-assets.txt",
     "client.mjs",
     "read-client.mjs",
     "controller.mjs",

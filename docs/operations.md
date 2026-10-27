@@ -9,7 +9,7 @@
 | DSH | `>=0.2.1-rc.2 <0.3.0`, official `subprocess`, `sessionProjections`, `connection`, `webServer` Host services (Connection RPC route registration reads the caller-scoped `webServer`) plus the official client Chat/Session/Conversation/Slot services. The tested precursor used Desktop 0.2.1-rc.2; the range is an API constraint, not a claim that every release was tested. |
 | Windows | Interactive Windows 10/11 session with Explorer and a visible DSH taskbar button. The original implementation had maintainer-run Windows overlay/clear probes. **This portable release variant, removal of the helper AppUserModelID call and regenerated artwork still require fresh live Windows acceptance.** |
 | Node | 22 or later; development tests use the experimental VM-module flag. |
-| Python | Existing Python 3.10+ for Windows; official DSH primary runtime preferred. Runtime helper and asset generation use only the standard library. No runtime download or installation. |
+| Python | Existing Python 3.10+ for Windows; official DSH primary runtime preferred. The installed runtime helper uses only the standard library. Artwork regeneration/tests use pinned development-only Pillow; no font file is required. No runtime download or installation. |
 | Linux/macOS | Native plugin is inert. CI runs fake Node/Python tests; this is not native badge support. |
 | Multiple DSH windows, tray-only apps, custom shells, small taskbar buttons, unusual DPI | Not claimed as live-validated. All exact-executable windows receive the same Host aggregate; Windows decides final placement/visibility. Independent Host instances sharing one executable are not distinguished. |
 

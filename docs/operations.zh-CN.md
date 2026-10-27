@@ -9,7 +9,7 @@
 | DSH | `>=0.2.1-rc.2 <0.3.0`，需要官方 `subprocess`、`sessionProjections`、`connection`、`webServer` Host 服务（Connection 注册 RPC 路由会读取调用方作用域的 `webServer`）及客户端 Chat/Session/Conversation/Slot 服务。前身在 Desktop 0.2.1-rc.2 验证过；此范围是 API 约束，不表示每版均实测。 |
 | Windows | 带 Explorer 的 Windows 10/11 交互用户会话，有可见 DSH 任务栏按钮。前身有维护者执行的真实覆盖/清除探测；**本次便携开源副本、移除 helper 的 AppUserModelID 调用及重新生成图标后，仍需新一轮真实 Windows 验收。** |
 | Node | 22 及以上；开发测试需要实验性 VM modules 开关。 |
-| Python | 已有 Windows Python 3.10+，优先官方 DSH 主运行时；helper 和图标生成均仅用标准库，不下载、不安装运行时。 |
+| Python | 已有 Windows Python 3.10+，优先官方 DSH 主运行时；已安装 helper 仅用标准库；图标再生/测试使用固定版本的开发用 Pillow，不依赖字体文件，不下载、不安装运行时。 |
 | Linux / macOS | 插件原生功能不启动。CI fake 测试不等于支持原生角标。 |
 | 多窗口、仅托盘、自定义 shell、小任务栏按钮、特殊 DPI | 不声称完成真实验证。精确 exe 匹配的所有可见窗口显示同一 Host 聚合数，最终位置和可见性由 Windows 控制；同一 exe 的独立 Host 实例无法区分。 |
 

@@ -50,9 +50,9 @@ before(() => {
     archive: archives[0] }, null, 2) + '\n');
 });
 
-test('real archive has version 0.2.1, both complete locales and all 100 icons without private or test artifacts', () => {
+test('real archive has version 0.2.2, both complete locales and all 100 icons without private or test artifacts', () => {
   const packed = JSON.parse(files.get('package.json').toString('utf8'));
-  assert.equal(packed.version, '0.2.1'); assert.equal(packed.version, pkg.version);
+  assert.equal(packed.version, '0.2.2'); assert.equal(packed.version, pkg.version);
   assert.match(packed.description, /任务栏数字角标/);
   assert.equal(packed.dsh.bundle.patch, './cordis.patch.yml');
   assert.equal(packed.exports['./package.json'], './package.json');
@@ -72,7 +72,7 @@ test('real archive has version 0.2.1, both complete locales and all 100 icons wi
     const name = `docs/images/native-badge-${value}.png`;
     assert.ok(files.has(name), name);
     const png = files.get(name);
-    assert.equal(png.readUInt32BE(16), 210); assert.equal(png.readUInt32BE(20), 48);
+    assert.equal(png.readUInt32BE(16), 132); assert.equal(png.readUInt32BE(20), 48);
     assert.deepEqual(png, readFileSync(resolve(root, name)), name);
   }
   for (const view of ['assets', 'states']) {
@@ -106,9 +106,9 @@ test('packed release code, locales and bilingual documentation match the audited
   for (const name of [...files.keys()].filter(name => /\.(?:mjs|js|py|json|md|yml)$/.test(name))) {
     assert.deepEqual(files.get(name), readFileSync(resolve(root, name)), name);
   }
-  assert.match(files.get('index.mjs').toString('utf8'), /version: '0\.2\.1'/);
+  assert.match(files.get('index.mjs').toString('utf8'), /version: '0\.2\.2'/);
   assert.match(files.get('native.py').toString('utf8'), /add_argument\('--locale', default='zh'\)/);
-  assert.match(files.get('CHANGELOG.md').toString('utf8'), /## 0\.2\.1/);
+  assert.match(files.get('CHANGELOG.md').toString('utf8'), /## 0\.2\.2/);
   assert.match(files.get('README.md').toString('utf8'), /Simplified Chinese/);
   assert.match(files.get('README.zh-CN.md').toString('utf8'), /默认简体中文/);
 });

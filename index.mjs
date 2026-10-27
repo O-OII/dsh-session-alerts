@@ -38,7 +38,7 @@ export function apply(ctx, config) {
   let native = null;
   let controller;
   function status() {
-    const record = { version: '0.2.1', mounted: !disposed, phase, startedAt, updatedAt: new Date().toISOString(),
+    const record = { version: '0.2.2', mounted: !disposed, phase, startedAt, updatedAt: new Date().toISOString(),
       hostPid: process.pid, helperReady: ready, helperGeneration: generation, restarts,
       ...controller?.snapshot(), native, lastError };
     try {

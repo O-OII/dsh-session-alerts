@@ -86,10 +86,10 @@ test('missing translation keys use supplied then built-in Chinese, not English',
   assert.match(translate('en', 'messages.configuration', { field: 'pythonPath' }), /pythonPath.*No helper was started/);
   assert.match(translate('zh', 'messages.configuration', { field: 'pythonPath' }), /pythonPath.*未启动/);
 });
-test('public package declares version 0.2.1, standalone bundle, explicit host range and MIT license', () => {
+test('public package declares version 0.2.2, standalone bundle, explicit host range and MIT license', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.name, 'dsh-native-taskbar-badge'); assert.equal(pkg.license, 'MIT');
-  assert.equal(pkg.version, '0.2.1');
+  assert.equal(pkg.version, '0.2.2');
   assert.equal(pkg.engines.dsh, '>=0.2.1-rc.2 <0.3.0');
   assert.equal(pkg.repository.url, 'https://github.com/O-OII/dsh-native-taskbar-badge.git');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');

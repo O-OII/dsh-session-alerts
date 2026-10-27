@@ -11,7 +11,13 @@ npm run test:python
 npm run test:pack
 ```
 
-No npm/pip dependency installation is required. Build deterministically wraps the authored client and receipt driver in the official lazy loader factory; `npm test` first checks that the shipped bundle matches those sources. Packaging uses an existing npm with `pack --ignore-scripts --offline`; archives, cache and unpacked verification stay in ignored `artifacts/`. There is no dependency lockfile because there are no dependencies.
+The runtime has no third-party Python/font dependency. Asset regeneration and Python asset tests use pinned development-only Pillow: provision `python -m pip install -r tools/requirements-assets.txt`, then test offline. Build deterministically wraps the authored client and receipt driver in the official lazy loader factory; `npm test` first checks that the shipped bundle matches those sources. Packaging uses an existing npm with `pack --ignore-scripts --offline`; archives, cache and unpacked verification stay in ignored `artifacts/`. There are no npm runtime dependencies; the separate artwork requirements file pins the development renderer.
+
+## 0.2.2 artwork verification
+
+Local Windows checks passed **129 JavaScript + 43 Python + 3 offline package tests**, with no failures/skips. The five asset tests cover all 100 five-frame ICO containers; original-path deterministic regeneration; transparent corners and antialiased edges; opaque white/dark contrast; actual 32/64→16 reductions; and absence of Pillow/font imports in the runtime helper. Regenerating all 100 icons again produced identical SHA-256 values. The native helper, unread state, client/RPC and lifecycle implementations are unchanged; only package/diagnostic version metadata advances.
+
+Separately performed native probes of 1/5/4/12/99+ returned COM success and were visually reviewed. Current README captures are 132 × 48-pixel crops; no fixed count of surrounding taskbar icons is implied. These probes are rendering evidence, not model-task or all-DPI/end-to-end acknowledgement acceptance. CI provisioning was updated for development-only Pillow; no remote CI run, deployment or paid call was performed by these local tests.
 
 ## 0.2.1 local evidence
 

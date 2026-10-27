@@ -92,7 +92,7 @@ const session = (id = 'main', depth = 0) => ({ id, header: { id, delegationDepth
 test('host lifecycle wires official APIs, counts real-shaped events and ignores window-focus messages', async () => {
   const f = await fixture();
   try {
-    assert.equal(f.status().version, '0.2.1');
+    assert.equal(f.status().version, '0.2.2');
     assert.ok(f.dependencies.includes('webServer'), 'Connection RPC registration requires caller webServer injection');
     assert.equal(f.routes.has('/native-taskbar-badge'), true);
     assert.throws(() => guardedServices({ webServer: {} }, ['connection']).webServer, /cannot get property "webServer" without inject/);
