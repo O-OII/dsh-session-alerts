@@ -13,6 +13,25 @@ npm run test:pack
 
 The runtime has no third-party Python/font dependency. Asset regeneration and Python asset tests use pinned development-only Pillow: provision `python -m pip install -r tools/requirements-assets.txt`, then test offline. Build deterministically wraps the authored client and receipt driver in the official lazy loader factory; `npm test` first checks that the shipped bundle matches those sources. Packaging uses an existing npm with `pack --ignore-scripts --offline`; archives, cache and unpacked verification stay in ignored `artifacts/`. There are no npm runtime dependencies; the separate artwork requirements file pins the development renderer.
 
+## 0.3.0 Session Alerts verification
+
+The current portable JavaScript suite passes **180 tests**. It covers the header/status contribution contract, accessible bilingual toggle, missing-API fail-closed behavior, set-source composition, read-only four-concurrent cold reads, known-baseline caching, generation cancellation, descendant activity/unknown ancestry, consumed-work accounting, strict-goal failure/clear, fork cuts and independent sidecar output. It retains all prior unread/read-CAS/native/asset regressions. No Session metadata is written and no Agent/native helper is activated by these tests.
+
+Optional oracle checks execute the **actual exported** official `dsh-agent.foldConsumedWork` and full `dsh-goal.goalProjectionDefinition`, not a guessed latest-turn policy. They compare 80 varied valid rounds at each prefix, validate real strict-goal corruption/clear behavior and fork suffixes, and invoke both real completion-only Host entry locations using only `sessionProjections`:
+
+```powershell
+$env:DSH_BADGE_SDK_ROOT = Read-Host 'Extracted official node_modules closure'
+node --test tools/completion-sdk.test.mjs
+```
+
+The separate `compat/workspace-sdk` test suite builds its exact hash-pinned native workspace baseline and verifies grouping/tree/flat/search/other-filter composition with real React rendering. CI provisions its isolated locked React development dependencies separately; the main package excludes that whole engineering subtree. These tests are not a claim that the new sidebar UI was live-accepted on every DSH release or OS. Local GUI/profile loading is a separate operator action; the badge screenshots demonstrate only the earlier controlled native probes.
+
+### Remote namespace and real GUI acceptance
+
+Both client entry declarations explicitly inject `remote.session` as well as `remote`. This is a real Cordis namespace dependency; package graph dependencies alone do not grant it. `tools/client-namespace-sdk.test.mjs` mounts the complete official ClientRemoteService and generated ApiRemotes assembly under real Cordis, reproduces the missing-inject error, and runs the production reader through both actual client declarations. Only the transport/type-registry storage is fake; the custom completion wire value is preserved end to end. Run it with the same `DSH_BADGE_SDK_ROOT` environment variable.
+
+An operator separately verified the actual GUI: the 28×28 button was hit-testable, pressed state toggled, the view changed from 7 visible main rows/15 tree items to 6 completed rows/11 items (including a known authoritative completed Session and an older result beyond the initial native limit), then restored the exact original rows/items and unchanged query. No slot errors were reported. That operator-owned deployment is not performed by the source tests and does not imply every OS/version is live-tested. The standalone entry lets the old native engine retain its actual identity and unread memory.
+
 ## 0.2.2 artwork verification
 
 Local Windows checks passed **129 JavaScript + 43 Python + 3 offline package tests**, with no failures/skips. The five asset tests cover all 100 five-frame ICO containers; original-path deterministic regeneration; transparent corners and antialiased edges; opaque white/dark contrast; actual 32/64→16 reductions; and absence of Pillow/font imports in the runtime helper. Regenerating all 100 icons again produced identical SHA-256 values. The native helper, unread state, client/RPC and lifecycle implementations are unchanged; only package/diagnostic version metadata advances.

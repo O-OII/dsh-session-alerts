@@ -20,6 +20,18 @@ test('locale namespace is package-owned and both complete catalogs have identica
   assert.deepEqual(en.map(([key]) => key).sort(), zh.map(([key]) => key).sort());
   for (const [key, value] of [...en, ...zh]) assert.ok(typeof value === 'string' && value.trim(), key);
 });
+test('DSH Session Alerts branding preserves technical package and settings identity', () => {
+  assert.equal(locales.zh.meta.title, 'DSH会话提醒');
+  assert.equal(locales.en.meta.title, 'DSH Session Alerts');
+  assert.match(locales.zh.meta.description, /DSH会话提醒/);
+  assert.match(locales.en.meta.description, /DSH Session Alerts/);
+  const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
+  assert.equal(pkg.name, 'dsh-native-taskbar-badge');
+  assert.equal(NAMESPACE, pkg.name);
+  assert.equal(pkg.exports['./client'], './client.js');
+  assert.match(readFileSync(new URL('../README.md', import.meta.url), 'utf8'), /^# DSH Session Alerts/m);
+  assert.match(readFileSync(new URL('../README.zh-CN.md', import.meta.url), 'utf8'), /^# DSH会话提醒/m);
+});
 test('translations preserve interpolation parameters in every namespace', () => {
   const zh = new Map(flatten(locales.zh));
   for (const [key, value] of flatten(locales.en)) {
@@ -86,12 +98,12 @@ test('missing translation keys use supplied then built-in Chinese, not English',
   assert.match(translate('en', 'messages.configuration', { field: 'pythonPath' }), /pythonPath.*No helper was started/);
   assert.match(translate('zh', 'messages.configuration', { field: 'pythonPath' }), /pythonPath.*未启动/);
 });
-test('public package declares version 0.2.2, standalone bundle, explicit host range and MIT license', () => {
+test('public package declares version 0.3.0, standalone bundle, explicit host range and MIT license', () => {
   const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'));
   assert.equal(pkg.name, 'dsh-native-taskbar-badge'); assert.equal(pkg.license, 'MIT');
-  assert.equal(pkg.version, '0.2.2');
+  assert.equal(pkg.version, '0.3.0');
   assert.equal(pkg.engines.dsh, '>=0.2.1-rc.2 <0.3.0');
-  assert.equal(pkg.repository.url, 'https://github.com/O-OII/dsh-native-taskbar-badge.git');
+  assert.equal(pkg.repository.url, 'https://github.com/O-OII/dsh-session-alerts.git');
   assert.equal(pkg.dsh.bundle.patch, './cordis.patch.yml');
   assert.match(pkg.description, /原生.*任务栏数字角标/);
   const patch = readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8');
@@ -116,7 +128,7 @@ test('asset preview defaults and unknown/absent locale stay Chinese even in an E
   for (const search of ['', '?lang=', '?lang=fr', '?lang=zh']) {
     const result = preview(search);
     assert.equal(result.document.documentElement.lang, 'zh-CN');
-    assert.match(result.html, /<title>原生角标资产预览/);
+    assert.match(result.html, /<title>DSH会话提醒资产预览/);
     assert.match(result.html, /alt="角标 1"/);
   }
 });
@@ -125,6 +137,6 @@ test('asset preview retains explicit English and opt-in browser auto with Chines
     ['?lang=auto', 'zh-CN', 'zh-CN'], ['?lang=auto', 'fr', 'zh-CN']]) {
     const result = preview(search, browser);
     assert.equal(result.document.documentElement.lang, expected);
-    if (expected === 'en') { assert.match(result.document.title, /Native badge/); assert.equal(result.images[0].alt, 'Badge 1'); }
+    if (expected === 'en') { assert.match(result.document.title, /DSH Session Alerts/); assert.equal(result.images[0].alt, 'Badge 1'); }
   }
 });

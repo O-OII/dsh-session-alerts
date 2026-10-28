@@ -1,4 +1,6 @@
 - insert:
+    - id: dsh-session-alerts-completion
+      name: 'dsh-native-taskbar-badge/completion'
     - id: native-taskbar-badge
       name: 'dsh-native-taskbar-badge'
       config:

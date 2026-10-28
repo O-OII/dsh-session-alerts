@@ -1,5 +1,15 @@
 # Changelog / 更新记录
 
+## 0.3.0 — 2026-10-27 (source prepared; deployment is a separate operator action)
+
+- Rename the product to **DSH会话提醒 / DSH Session Alerts** and repository metadata to `dsh-session-alerts`; preserve the technical npm/settings/native contribution identity.
+- Add the native workspace header completed-only toggle and loading/unknown/empty status contributions through workspace extension API v1. Compose with grouping/search/archive/order/other filters without DOM hiding, title inference or Session metadata writes. Stock rc.3 needs the separately user-authorized SHA-pinned compatibility engineering project, excluded from the main npm package.
+- Add independent wired completion projection using official strict Goal replay and consumed-work accounting semantics: exclude empty no-ops, dropped unrun input, unsuccessful/running/waiting work, subagents and intermediate goal rounds; clearing a goal cannot launder its prior accounting end into success.
+- Read cold authority through official projections, at most four concurrent requests; own generation/fingerprint cache, canceled stale requests, bounded unknown retries and no recurring all-log sweep. Confirmed running descendant subagents veto their associated main root; unresolved orphans do not contaminate unrelated mains. This certifies DSH terminal success, not business acceptance or unbounded external jobs.
+- Build the standalone private `sidebar-package` from shared sources: completion-only Host + sidebar-only client, separate identity, bundle patch and bilingual metadata. It can be added beside an existing old badge engine without reloading that engine or duplicating its read marker.
+- Preserve the verified native unread reducer/controller/RPC/native helper. No deployment, commit, push, restart or paid call is performed by source tests.
+- 中文：产品改名并保留技术ID；通过明确的工作区API v1增加只看已完成及加载/未知/空态，正确组合原视图，不DOM隐藏/猜标题/写元数据。独立完成投影复用严格goal并遵循真实消费工作规则，冷读四并发、自有代际缓存、取消/未知回退，排除运行子代理并真实Client DTO优先使用parentId，未归属孤儿不污染无关主会话。独立sidecar只加载completion+sidebar，不重载旧未读引擎；兼容SDK工程隔离且不进主npm包。测试不部署、不提交/推送、不重启、不收费调用。
+
 ## 0.2.2 — 2026-10-27 (artwork-only source update)
 
 - Replace 3×5 block numerals with independently authored rounded cubic-Bezier strokes, round caps/joins, dark single-number circles and multi-character capsules; transparent antialiased outskirts. No fonts or copied font outlines.

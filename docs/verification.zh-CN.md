@@ -13,6 +13,25 @@ npm run test:pack
 
 运行时无第三方 Python/字体依赖。资产再生和 Python 资产测试需先以 `python -m pip install -r tools/requirements-assets.txt` 准备固定版本的开发用 Pillow，之后离线运行。构建把客户端源码和确认驱动确定性包装为官方惰性 loader factory，`npm test` 先校验随包 bundle 与源码一致。实际打包使用已有 npm 的 `pack --ignore-scripts --offline`，压缩包、缓存与解包核验均限制在 ignored `artifacts/`。项目没有 npm 运行依赖；独立 artwork requirements 文件固定开发绘制器版本。
 
+## 0.3.0 会话提醒验证
+
+当前可移植JavaScript套件通过 **180项测试**，覆盖标题栏/状态贡献契约、双语可访问开关、缺API保守不可用、集合组合、只读四并发冷读、已知基线缓存、代际取消、运行后代/未知父链、消费工作记账、严格goal失败/clear、fork cut及独立sidecar输出；保留之前所有未读/read-CAS/native/资产回归。测试不写会话元数据、不激活Agent或原生helper。
+
+独立oracle测试执行**真实官方导出**`dsh-agent.foldConsumedWork`和完整`dsh-goal.goalProjectionDefinition`，不是猜latest-turn。对80轮有效混合历史的每个prefix比较结果，验证真实严格goal损坏/clear与fork owned suffix，并仅用`sessionProjections`调用两个真实completion-only Host入口：
+
+```powershell
+$env:DSH_BADGE_SDK_ROOT = Read-Host '只读提取的官方 node_modules 依赖闭包'
+node --test tools/completion-sdk.test.mjs
+```
+
+独立`compat/workspace-sdk`测试构建精确哈希固定的原生工作区基线，使用真实React渲染验证分组/树/平铺/搜索/其他筛选组合。CI单独准备其锁定React开发依赖，主包排除整个工程目录。这不代表新侧栏已在每版DSH/每种OS实机验收；GUI/profile加载是操作者另行动作，原角标截图只证明此前受控原生probe。
+
+### Remote命名空间与真实GUI验收
+
+两个客户端入口均显式inject `remote.session`（除`remote`外）；这是Cordis真实命名空间依赖，只有包依赖图声明不够。`tools/client-namespace-sdk.test.mjs`在真实Cordis中挂载完整官方ClientRemoteService和生成ApiRemotes assembly，复现缺依赖错误，再通过两个真实客户端声明调用生产reader，验证自定义完成wire保留。仅下层传输/类型注册存储为fake，框架/命名空间不是普通remote对象mock。使用同一`DSH_BADGE_SDK_ROOT`环境运行。
+
+操作者另行真实GUI核实：28×28按钮可命中、pressed切换；原7个可见主会话/15树项开启后为6个完成会话/11项（含已确认权威完成项及原limit之后的更旧完成项），关闭后精确恢复原rows/items，query不变，slot errors为空。这是操作者本机部署验收，不是源码测试执行了部署，也不代表每OS/版本都实测；独立sidecar保留旧native引擎真实版本身份及未读内存。
+
 ## 0.2.2 资产验证
 
 Windows 本机通过 **129 项 JavaScript + 43 项 Python + 3 项离线打包测试**，无失败/跳过。五项资产测试覆盖全部100个五帧ICO结构、原创路径确定性再生、透明角落/抗锯齿、白字深底对比、实际32/64→16缩小，以及运行helper无Pillow/字体导入。再次重生全部100ICO后SHA-256完全一致。原生helper、未读、客户端/RPC及生命周期实现不改，只推进包/诊断版本元数据。

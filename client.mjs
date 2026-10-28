@@ -1,9 +1,11 @@
 /** Official client contribution. The marker exists only in a materialized Chat result footer. */
 import { createElement, useEffect, useRef } from 'react';
 import { createReadReceipt } from './read-client.mjs';
+import { applyCompletedSidebar } from './completed-sidebar.mjs';
 export const name = 'native-taskbar-badge-client';
-export const inject = ['slots', 'sessions', 'uiSession', 'uiConversation', 'connection'];
+export const inject = ['slots', 'sessions', 'uiSession', 'uiConversation', 'connection', 'remote', 'remote.session', 'locale', 'uiWorkspace'];
 export function apply(ctx) {
+  applyCompletedSidebar(ctx);
   function ResultReadMarker({ sessionId, turn, useBadgeChat }) {
     const marker = useRef(null);
     // The slot's seq can be the final assistant message seq, NOT turn/end.

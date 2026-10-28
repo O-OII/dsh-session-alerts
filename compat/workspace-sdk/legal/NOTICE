@@ -1,0 +1,29 @@
+USER-AUTHORIZED LOCAL SDK PATCH — NOT AN OFFICIAL RELEASE
+
+This private generated package modifies @deepseek-ai/dsh-client-ui-workspace
+0.2.1-rc.3, copyright (c) 2026 DeepSeek, MIT license (see LICENSE).
+Its original package name, module identity, version, exports, dsh.client inject
+manifest, and host entry are retained solely for compatibility with the user's
+existing DSH client graph. This package must NOT be published to any registry.
+
+Upstream input: artifacts/dsh-session-alerts-20261027/sdk/dsh/node_modules/
+@deepseek-ai/dsh-client-ui-workspace (provided official runtime SDK evidence).
+client.js SHA256: bafd2d6eea2f82674cc0606bec13fc891e44b42fb2ac973f01cb32c735d4062f
+package.json SHA256: 249106ef05cd599e1a9d04d4443529f30e8d8aa914d7feee59357b5d052fc523
+lib/index.js SHA256: e6cdc4b725585354102a5c4598c9d8c79d6abac62d7979c09919821716370438
+
+The official SDK extraction omitted LICENSE. The identical upstream MIT text was
+recovered from the existing installed ui-workspace package evidence under
+ dsh-plugin-source/dsh-remote-workspaces-563013048203c04e8d7ca079c0326f45e1c908a1/
+ node_modules/.pnpm/@deepseek-ai+dsh-client-ui-_ba036df9892196f01c828d5af3d85f7d/
+ node_modules/@deepseek-ai/dsh-client-ui-workspace/LICENSE
+Original license evidence SHA256:
+ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be
+
+Local changes: public sessionFilters registry API v1; root/list header.action
+and filter.status extension seats; native presentation-only filtering before
+watermark/search slicing; filtered-empty localized fallback; header width and
+search expansion accommodation for contributed controls. See AUDIT.json for
+all exact count-checked source edits, source hashes and output hash.
+No Host behavior is added. No ASAR change, DOM hiding, React-store monkeypatch,
+network dependency installation, replacement server, or npm publication occurs.

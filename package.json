@@ -1,18 +1,18 @@
 {
   "name": "dsh-native-taskbar-badge",
-  "version": "0.2.2",
-  "description": "为 DSH Desktop 主会话显示 Windows 原生 COM 任务栏数字角标；不弹窗、不响铃、不抢焦点、不修改 ASAR。",
+  "version": "0.3.0",
+  "description": "DSH会话提醒 / DSH Session Alerts：主会话已完成侧栏筛选与逐会话未读提醒；Windows 原生 COM 任务栏数字角标；不弹窗、不响铃、不抢焦点、不修改 ASAR。",
   "license": "MIT",
   "author": "O-OII contributors",
   "type": "module",
   "repository": {
     "type": "git",
-    "url": "https://github.com/O-OII/dsh-native-taskbar-badge.git"
+    "url": "https://github.com/O-OII/dsh-session-alerts.git"
   },
   "bugs": {
-    "url": "https://github.com/O-OII/dsh-native-taskbar-badge/issues"
+    "url": "https://github.com/O-OII/dsh-session-alerts/issues"
   },
-  "homepage": "https://github.com/O-OII/dsh-native-taskbar-badge#readme",
+  "homepage": "https://github.com/O-OII/dsh-session-alerts#readme",
   "keywords": [
     "dsh",
     "windows",
@@ -24,6 +24,8 @@
   "exports": {
     ".": "./index.mjs",
     "./client": "./client.js",
+    "./completion": "./completion.mjs",
+    "./sidebar-client": "./sidebar-client.js",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.svg",
     "./package.json": "./package.json"
@@ -31,6 +33,24 @@
   "files": [
     "index.mjs",
     "bridge.mjs",
+    "completion.mjs",
+    "completion-state.mjs",
+    "completion-contract.mjs",
+    "completion-reader.mjs",
+    "completed-filter.mjs",
+    "completed-sidebar.mjs",
+    "sidebar-messages.mjs",
+    "sidebar-client.mjs",
+    "sidebar-client.js",
+    "sidebar-package/package.json",
+    "sidebar-package/index.mjs",
+    "sidebar-package/client.js",
+    "sidebar-package/completion.mjs",
+    "sidebar-package/completion-state.mjs",
+    "sidebar-package/completion-contract.mjs",
+    "sidebar-package/locale/*.json",
+    "sidebar-package/cordis.patch.yml",
+    "sidebar-package/LICENSE",
     "client.js",
     "tools/build-client.mjs",
     "tools/generate-assets.py",
@@ -79,7 +99,10 @@
         "@deepseek-ai/dsh-client-ui-renderer",
         "@deepseek-ai/dsh-client-ui-session",
         "@deepseek-ai/dsh-client-ui-conversation",
-        "@deepseek-ai/dsh-client-ui-chat"
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-workspace"
       ]
     },
     "bundle": {

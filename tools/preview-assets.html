@@ -2,11 +2,11 @@
 <html lang="zh-CN">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>原生角标资产预览 — 示意图</title>
+<title>DSH会话提醒资产预览 — 示意图</title>
 <style>*{box-sizing:border-box}body{margin:0;background:#eef2f7;font:16px/1.7 system-ui,sans-serif;color:#1b2941}main{max-width:1000px;margin:65px auto;padding:42px;background:#fff;border:1px solid #dce4f0;border-radius:20px}h1{font-size:30px;letter-spacing:-.5px;margin:0 0 10px}.kicker{color:#4163c9;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:1px}.description{color:#69788e}.grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin:32px 0}.tile{padding:24px 12px;background:#f4f7fc;border:1px solid #e5eaf4;border-radius:15px;text-align:center}.tile img{display:block;width:64px;height:64px;margin:0 auto 15px}.value{font-size:20px;font-weight:700}strong{color:#273a60}.warning{font-size:13px;color:#78849a;border-top:1px solid #e5eaf4;padding-top:18px}.features{display:flex;gap:12px;flex-wrap:wrap;font-size:13px}.features span{padding:5px 10px;background:#edf3ff;border-radius:8px;color:#3a5ca9}</style>
 </head>
 <body><main>
-<div class="kicker" id="kicker">DSH · 原生任务栏角标</div>
+<div class="kicker" id="kicker">DSH会话提醒</div>
 <h1 id="title">静默的数字提醒，原生 Windows 覆盖图标。</h1>
 <p class="description" id="intro">预览本插件实际附带的无字体 ICO 数字资产。</p>
 <div class="grid">
@@ -23,9 +23,9 @@ const requested = new URLSearchParams(location.search).get('lang');
 const selected = requested === 'auto' ? navigator.language : requested;
 if (/^en(?:[-_.]|$)/i.test(String(selected))) {
   document.documentElement.lang = 'en';
-  document.title = 'Native badge asset preview — illustration';
+  document.title = 'DSH Session Alerts asset preview — illustration';
   for (const [id, text] of Object.entries({
-    kicker: 'DSH · Native taskbar badge',
+    kicker: 'DSH Session Alerts',
     title: 'Quiet numbers. Native Windows overlays.',
     intro: 'Preview of the exact font-free ICO assets shipped with this plugin.',
     warning: 'Asset illustration — not a Windows desktop screenshot. These are the bundled generated icons rendered by a browser. Actual placement, size and visibility are controlled by Windows and still need live acceptance for this release variant.',

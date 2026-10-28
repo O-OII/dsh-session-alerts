@@ -41,3 +41,18 @@ jobs:
         run: python -B tools/generate-assets.py
       - name: Verify deterministic committed assets
         run: git diff --exit-code -- assets/badges
+
+  workspace-sdk-contract:
+    name: Pinned native workspace extension contract
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Provision isolated SDK test-only React dependencies
+        run: npm ci --ignore-scripts --prefix compat/workspace-sdk
+      - name: Build hash-pinned portable compatibility artifact
+        run: node compat/workspace-sdk/scripts/build.mjs
+      - name: Verify native tree, search and filter composition
+        run: node --test compat/workspace-sdk/test/sdk.test.mjs

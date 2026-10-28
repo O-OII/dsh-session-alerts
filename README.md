@@ -1,8 +1,10 @@
-# DSH Native Taskbar Badge
+# DSH Session Alerts
 
 [简体中文](./README.zh-CN.md) · [MIT](./LICENSE)
 
-A quiet Windows-native numeric taskbar badge for DeepSeek Harness Desktop, with **per-session unread results**.
+**DSH Session Alerts / DSH会话提醒** adds a **completed-main-session workspace view** and quiet **per-session unread** Windows taskbar badges to DeepSeek Harness Desktop.
+
+The technical npm package, settings namespace and contribution IDs remain `dsh-native-taskbar-badge`; this product rename does not migrate or reset settings/unread state.
 
 **0.2.2 artwork:** original rounded Bezier numerals, dark circular/capsule backgrounds and transparent antialiased edges. Each ICO includes 16/24/32/48/64 px artwork; no system or bundled font is used. The verified unread/RPC behavior is unchanged.
 
@@ -37,9 +39,25 @@ Eligible live main-session results: completion, error, blocked and output-limit 
 
 Cancellation and restored history do not create notifications. Intermediate successful rounds of an active goal are filtered by default. Unread state lives in Host memory: it survives browser/window disconnect, page refresh and helper restart, **not Host restart or plugin disable/re-enable**. No history replay or persistent-unread claim. See [behavior and limitations](docs/behavior.md).
 
+## Completed-session workspace view
+
+| Completed-only off | Completed-only on |
+| --- | --- |
+| ![Real workspace toolbar with completed-only off](docs/images/session-filter-off-live.png) | ![Real workspace toolbar with completed-only on, blue check-circle](docs/images/session-filter-on-live.png) |
+
+*Actual 260 × 36-pixel workspace-toolbar captures, without session rows/private content. The check-circle sits to the right of Search and left of View options; blue indicates on. These are the real filter controls, separate from the taskbar-number probe screenshots above.*
+
+Click the check-circle button in the **workspace section's right-hand header actions**, beside the native search/view/add controls. Click again to restore all session states. The pressed state, accessible name and tooltip are explicit. The toggle is page-local and changes **only this filter**: it does not archive/delete sessions, write session metadata, acknowledge unread results, clear search, change grouping/order, or reset other filters.
+
+“Completed” means the latest **consumed DSH work** ended successfully, not that a real-world business objective was independently verified. Empty/no-op turns do not invent success. Running, waiting, unsuccessful/cancelled endings, active/paused/blocked goal rounds, subagents and unknown baselines are excluded. Goal clearing cannot turn an old intermediate round into success. Confirmed running descendant subagents also exclude their associated main parent. An unassociated orphan does not contaminate unrelated main sessions; the view does not claim it can prove every external/unknown descendant. Previously read successful results remain eligible. Loading/unknown/empty states explain what is happening and offer a recovery that disables only completed-only.
+
+This feature requires **workspace extension API v1**, not supplied by stock rc.3. The isolated, user-authorized [workspace SDK compatibility project](compat/workspace-sdk/README.md) provides genuine header/status slots and composable set filters on a SHA-256-pinned rc.3 baseline; it is not an upstream release and is deliberately excluded from the main npm archive. No DOM hiding, title-based inference, ASAR editing or replacement application server is used. Missing API fails closed with an unavailable diagnostic and no fake header toggle.
+
+Completion is a separate read-only Host projection and the sidebar has no Python/Windows requirement. [Detailed semantics and composition](docs/completed-filter.md). To add this view beside an already-running older badge engine **without reloading/resetting its unread count**, use the independently built [completion + sidebar sidecar](sidebar-package/package.json), not a file-URL Loader entry under this repository's root package. Do not enable the sidecar alongside the full 0.3.0 client: they intentionally provide the same filter ID.
+
 ## Requirements
 
-**Windows 10/11**, Explorer and a visible DSH taskbar button; trusted Windows **Python 3.10+**; **Node 22+**; DSH **`>=0.2.1-rc.2 <0.3.0`** with official `subprocess`, `sessionProjections`, `connection`, `webServer` and the client Chat/Session/Conversation/Slot services. The package includes its official browser contribution. Other conversation targets do not auto-acknowledge results. See [compatibility](docs/operations.md).
+**Native badge:** Windows 10/11, Explorer and a visible DSH taskbar button; trusted Windows **Python 3.10+**. **Sidebar:** workspace extension API v1 plus the independent completion projection; no Python/Windows requirement. **Node 22+**; DSH **`>=0.2.1-rc.2 <0.3.0`** with official `subprocess`, `sessionProjections`, `connection`, `webServer` and the client Chat/Session/Conversation/Slot services. The package includes its official browser contribution. Other conversation targets do not auto-acknowledge results. See [compatibility](docs/operations.md).
 
 ## Install from source
 

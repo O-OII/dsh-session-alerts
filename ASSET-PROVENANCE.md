@@ -13,6 +13,14 @@ The maintainer authorized open-sourcing this project. The [MIT license](./LICENS
 - The ICO/DIB encoder remains project-authored standard-format interoperability code. Windows COM interface names/GUIDs are interoperability identifiers; no Windows executable, SDK library or Microsoft font is distributed.
 - [Application SVG](./icon.svg) is the previously reviewed simple supplied geometry, unchanged by the numeric-artwork redesign. No embedded fonts or external images.
 
+## Completion/sidebar interoperability and isolated SDK source
+
+Completion accounting is independently implemented against the official Agent consumed-work contract and checked against the actual exported `foldConsumedWork` oracle. Strict goal replay is imported from the installed official Goal definition, not copied or relaxed. Sidebar code contributes only through the explicit workspace API v1.
+
+The separately user-authorized `compat/workspace-sdk` subtree retains a pinned upstream MIT workspace baseline with its original LICENSE/NOTICE and hash audit. It is not claimed as newly authored SDK code or an upstream release, and is excluded from the main plugin npm archive. Its own README/legal notices describe reproducible generation. Sidebar factories are generated from shared project source and do not bundle an SDK implementation.
+
+中文：完成记账独立实现并与官方导出oracle对照，严格goal复用已安装SDK定义；隔离compat工程保留上游MIT来源、许可证、NOTICE及哈希审计，不冒称原创SDK或上游正式版，也不进入主npm包。侧栏factory只含本项目贡献代码。
+
 ## Reproduction and evidence
 
 Provision `python -m pip install -r tools/requirements-assets.txt` in a development environment, then run `python -B tools/generate-assets.py` offline. Pinning Pillow avoids silent renderer-version changes; CI regenerates and checks committed bytes. `--candidate --output <directory> --preview <png>` creates `1`, `5`, `12` and `99+` ICOs plus a developer comparison containing native 16 px and actual 32→16 reductions. A preview is **not** a Windows screenshot or proof of shell placement.

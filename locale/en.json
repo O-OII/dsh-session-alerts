@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Native taskbar number badge",
-    "description": "Windows native per-session unread-result count. Only the active, visible Chat result footer acknowledges its exact revision; foreground results still count. No toast, sound or focus stealing."
+    "title": "DSH Session Alerts",
+    "description": "DSH Session Alerts: completed-main-session workspace view (requires workspace extension API) and Windows native per-session unread-result count. Only the active, visible Chat result footer acknowledges its exact revision; foreground results still count. No toast, sound or focus stealing."
   },
   "config": {
     "enabled": { "title": "Enabled", "description": "Enable the Windows helper. Disabling clears the overlay and stops the helper." },

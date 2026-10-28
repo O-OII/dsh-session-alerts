@@ -28,9 +28,10 @@ function fixture({observer=true}={}) {
   const node={isConnected:true,checkVisibility:()=>true,getBoundingClientRect:()=>({top:100,bottom:101,left:100,right:101,width:1,height:1})};
   const effects=[],observers=[]; let definition;
   const ctx={connection:{generation,rpc:{async call(channel,endpoint,payload,signal){calls.push({channel,endpoint,payload});return bridge(endpoint,payload,signal,{principal:{kind:'owner'}});}}},
+    effect(fn){effects.push(fn());},locale:{register(){return()=>{};}},uiWorkspace:{},
     uiSession:{current},sessions:{binding:id=>id==='main'?{sessionId:id}:undefined},
     uiConversation:{binding:()=>({target:id=>{assert.equal(id,'chat');return chat;}})},
-    slots:{inject(name,callback){assert.equal(name,'conversation.chat.turnTail');callback();},register(spec,component){definition={spec,component};}}};
+    slots:{inject(name,callback){if(name==='conversation.chat.turnTail')callback();},register(spec,component){definition={spec,component};}}};
   const React={useRef:()=>({current:node}),useEffect:fn=>{effects.push(fn());},createElement:(type,props)=>({type,props})};
   let factory;
   window.__ModuleLoader__={load(value){assert.equal(value.id,'dsh-native-taskbar-badge');factory=value.factory;}};

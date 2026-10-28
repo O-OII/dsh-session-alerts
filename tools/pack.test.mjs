@@ -50,13 +50,21 @@ before(() => {
     archive: archives[0] }, null, 2) + '\n');
 });
 
-test('real archive has version 0.2.2, both complete locales and all 100 icons without private or test artifacts', () => {
+test('real archive has version 0.3.0, both complete locales and all 100 icons without private or test artifacts', () => {
   const packed = JSON.parse(files.get('package.json').toString('utf8'));
-  assert.equal(packed.version, '0.2.2'); assert.equal(packed.version, pkg.version);
+  assert.equal(packed.version, '0.3.0'); assert.equal(packed.version, pkg.version);
   assert.match(packed.description, /任务栏数字角标/);
   assert.equal(packed.dsh.bundle.patch, './cordis.patch.yml');
   assert.equal(packed.exports['./package.json'], './package.json');
   assert.equal(packed.exports['./client'], './client.js');
+  assert.equal(packed.exports['./completion'], './completion.mjs');
+  assert.equal(packed.exports['./sidebar-client'], './sidebar-client.js');
+  for (const name of ['completion.mjs','completion-state.mjs','completion-contract.mjs','completion-reader.mjs','completed-filter.mjs','completed-sidebar.mjs','sidebar-messages.mjs','sidebar-client.js','sidebar-package/package.json','sidebar-package/index.mjs','sidebar-package/client.js','sidebar-package/completion.mjs','sidebar-package/cordis.patch.yml']) assert.ok(files.has(name),name);
+  assert.ok(![...files.keys()].some(name => name.startsWith('compat/')), 'SDK compatibility source must not enter the main npm package');
+  assert.match(files.get('sidebar-client.js').toString('utf8'), /sidebar\.workspaces\.header\.action/);
+  assert.doesNotMatch(files.get('sidebar-client.js').toString('utf8'), /conversation\.chat\.turnTail|subprocess\.spawn|querySelector|MutationObserver/);
+  assert.deepEqual(files.get('sidebar-client.js'), files.get('sidebar-package/client.js'));
+  for (const name of ['completion.mjs','completion-state.mjs','completion-contract.mjs']) assert.deepEqual(files.get(name),files.get(`sidebar-package/${name}`));
   assert.equal(packed.dsh.client.platform, 'web');
   assert.ok(packed.dsh.client.inject.includes('@deepseek-ai/dsh-client-ui-chat'));
   for (const name of ['bridge.mjs', 'client.js', 'client.mjs', 'read-client.mjs', 'tools/build-client.mjs']) assert.ok(files.has(name), name);
@@ -65,7 +73,7 @@ test('real archive has version 0.2.2, both complete locales and all 100 icons wi
   const requirePacked = createRequire(pathToFileURL(resolve(unpacked, 'index.mjs')));
   assert.equal(requirePacked.resolve(`${pkg.name}/package.json`), resolve(unpacked, 'package.json'));
   assert.equal(requirePacked(`${pkg.name}/package.json`).description, pkg.description);
-  for (const topic of ['behavior', 'configuration', 'operations', 'alternatives', 'verification', 'images']) {
+  for (const topic of ['behavior', 'configuration', 'operations', 'alternatives', 'verification', 'images', 'completed-filter']) {
     for (const suffix of ['', '.zh-CN']) assert.ok(files.has(`docs/${topic}${suffix}.md`), topic + suffix);
   }
   for (const value of [5, 4]) {
@@ -74,6 +82,12 @@ test('real archive has version 0.2.2, both complete locales and all 100 icons wi
     const png = files.get(name);
     assert.equal(png.readUInt32BE(16), 132); assert.equal(png.readUInt32BE(20), 48);
     assert.deepEqual(png, readFileSync(resolve(root, name)), name);
+  }
+  for (const state of ['off','on']) {
+    const name = `docs/images/session-filter-${state}-live.png`;
+    assert.ok(files.has(name),name); const png=files.get(name);
+    assert.equal(png.readUInt32BE(16),260); assert.equal(png.readUInt32BE(20),36);
+    assert.deepEqual(png,readFileSync(resolve(root,name)),name);
   }
   for (const view of ['assets', 'states']) {
     for (const language of ['en', 'zh']) assert.ok(files.has(`docs/images/badge-${view}-${language}.png`), view + language);
@@ -106,9 +120,9 @@ test('packed release code, locales and bilingual documentation match the audited
   for (const name of [...files.keys()].filter(name => /\.(?:mjs|js|py|json|md|yml)$/.test(name))) {
     assert.deepEqual(files.get(name), readFileSync(resolve(root, name)), name);
   }
-  assert.match(files.get('index.mjs').toString('utf8'), /version: '0\.2\.2'/);
+  assert.match(files.get('index.mjs').toString('utf8'), /version: '0\.3\.0'/);
   assert.match(files.get('native.py').toString('utf8'), /add_argument\('--locale', default='zh'\)/);
-  assert.match(files.get('CHANGELOG.md').toString('utf8'), /## 0\.2\.2/);
+  assert.match(files.get('CHANGELOG.md').toString('utf8'), /## 0\.3\.0/);
   assert.match(files.get('README.md').toString('utf8'), /Simplified Chinese/);
   assert.match(files.get('README.zh-CN.md').toString('utf8'), /默认简体中文/);
 });

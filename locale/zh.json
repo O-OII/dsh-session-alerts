@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "原生任务栏数字角标",
-    "description": "按主会话未读结果显示 Windows 原生数字角标；仅当前可见 Chat 结果页脚确认精确版本，前台仍累计。不弹窗、不响铃、不抢焦点。"
+    "title": "DSH会话提醒",
+    "description": "DSH会话提醒：工作区只看已完成主会话（需侧栏扩展API），并按主会话未读结果显示 Windows 原生数字角标；仅当前可见 Chat 结果页脚确认精确版本，前台仍累计。不弹窗、不响铃、不抢焦点。"
   },
   "config": {
     "enabled": { "title": "启用", "description": "启用 Windows 辅助进程；停用时清除覆盖图标并退出辅助进程。" },
