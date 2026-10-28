@@ -29,10 +29,18 @@ If your installation puts its official CLI elsewhere, select that exact shipped 
 
 Normal host reload/disposal is owned by DSH. If your plugin lifecycle queue is busy, wait or arrange a safe maintenance window; never kill unrelated agents or edit their integration packages to force activation. Package-manager changes can reify other packages: back up your own local customizations before install/remove.
 
+## Durable updates: archives, locks and hard links
+
+Build and test the source **before** packing. Put each fixed archive in a new immutable output path; do not overwrite a previously locked `.tgz`. Install that exact archive with the same official CLI and verify the saved dependency specification, lockfile integrity and the actual served client artifact agree. If using the independent sidecar, pack/update its corrected client too; an old sidecar archive can restore completed-only behavior even when local source says unread.
+
+Do not fix only `node_modules/client.js` in place. A package manager can hard-link it to its content-addressed store: an in-place write can corrupt the cache, and a later integrity check/reinstall can restore old bytes into the live plugin. Never edit the shared store. If a separately authorized maintenance procedure needs to replace installed artifacts, stage verified bytes and atomically replace the directory entry rather than writing through the hard link; also persist the corrected archive and manifest/lock reference. This repository does not ship machine-specific live-profile repair scripts.
+
+Refresh the existing GUI after artifact updates if it has not loaded the new revision. Do not treat a source edit, an old cached bundle or an engine's unchanged diagnostic version as proof of what the renderer loaded. Do not rerun live-profile package-manager operations merely to test a repair: use a disposable directory/profile and isolated store. If certificate, supply-chain or build-approval checks fail, stop and resolve the environment legitimately; do not relax global security policy.
+
 ## Troubleshoot safely
 
 - **`configuration-error`:** supply the exact existing desktop executable and trusted Python 3.10+ executable. There is no automatic Python installation; do not point Python to Electron/node.
-- **No visible number:** make sure the application has an actual taskbar button and Windows allows badges/overlays. A hidden tray-only app is not restored. Foreground focus does not clear unread. The official browser contribution must load; only an active, visible Chat result footer with the exact turn-end sequence can acknowledge a result. Small-button mode and shell policy may suppress overlays.
+- **No visible number:** make sure the application has an actual taskbar button and Windows allows badges/overlays. A hidden tray-only app is not restored. Foreground focus alone does not clear unread. The official client must load: either a qualified current native-read main view or an exact visible Chat result footer can acknowledge one terminal revision. See the [two read paths](behavior.md). Small-button mode and shell policy may suppress overlays.
 - **Multiple DSH windows:** each matching window displays the same aggregate; reading a result in either eligible window acknowledges only that session revision, once. There is no title guessing or per-window count.
 - **Helper error/readiness timeout:** check selected Python, Windows session/Explorer access and security policy. The helper starts with `-I -u`. Plugin-owned errors and native HRESULT wrappers default/fall back to Simplified Chinese; underlying operating-system messages may remain in the OS language.
 - **Crash/Explorer recreation:** unexpected helper exit is retried at most three times (1/2/4 seconds). A changed Explorer/window topology or failed draw retries the current desired overlay; it does not generate new session notifications. After retry exhaustion, fix the cause and disable/re-enable the plugin.

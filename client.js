@@ -62,298 +62,200 @@ function createReadReceipt({ getView, getGeneration, call, schedule = setTimeout
   };
 }
 
-/** Shared JSON contract; no SDK, platform, storage or Python dependency. */
-const COMPLETION_KEY = 'sessionAlertsCompletion';
-const COMPLETION_STATES = new Set(['completed','running','waiting','error','incomplete','unknown']);
-const GOAL_PHASES = new Set(['none','active','paused','blocked','complete']);
-function parseCompletionView(value) {
-  const integer = number => Number.isSafeInteger(number) && number >= 0;
-  if (!value || value.version !== 1 || !COMPLETION_STATES.has(value.state) || typeof value.main !== 'boolean' ||
-      (value.turn !== null && !integer(value.turn)) || (value.eventSeq !== null && !integer(value.eventSeq)) ||
-      !GOAL_PHASES.has(value.goalPhaseAtEnd) || (value.goalIdAtEnd !== null && typeof value.goalIdAtEnd !== 'string') ||
-      typeof value.droppedUnrun !== 'boolean') throw new TypeError('Invalid session completion projection');
-  if (value.state === 'completed' && (!value.main || value.droppedUnrun || value.turn === null || value.eventSeq === null ||
-      !['none','complete'].includes(value.goalPhaseAtEnd) || value.goalPhaseAtEnd === 'none' && value.goalIdAtEnd !== null ||
-      value.goalPhaseAtEnd === 'complete' && !value.goalIdAtEnd)) throw new TypeError('Inconsistent completed projection');
-  return value;
-}
-
-/** Official cold projection reader. No retain/open, catalog writes or log reads.
- * Four workers maximum; cache/invalidation belongs to the caller's model.
+/** DSH-native current-view reads need not scroll to a historical result footer.
+ * Never bulk-ack a fresh page's default false unread flags. Only its ready,
+ * retained, visible and focused CURRENT main session can acknowledge a terminal.
  */
-function createCompletionReader(remote, { concurrency = 4 } = {}) {
-  return async function classify(sessionIds, signal) {
-    const ids = [...new Set(sessionIds)], sessions = new Array(ids.length);
-    let next = 0;
-    async function worker() {
-      while (next < ids.length) {
-        signal?.throwIfAborted();
-        const index = next++, sessionId = ids[index];
-        let item = { sessionId, state: 'unknown' };
-        try {
-          const result = await remote.session.projections({ sessionId }, signal);
-          signal?.throwIfAborted();
-          const value = result?.ok ? result.value : null;
-          if (value?.kind === 'sequenced' && Number.isSafeInteger(value.asOfSeq) && value.asOfSeq >= -1) {
-            const projection = parseCompletionView(value.values?.[COMPLETION_KEY]);
-            if (projection.eventSeq === null || projection.eventSeq <= value.asOfSeq) {
-              const activeQuestions = value.values?.userQuestions?.active;
-              const waiting = Array.isArray(activeQuestions) && activeQuestions.length > 0;
-              item = { sessionId, state: !projection.main ? 'incomplete' : waiting ? 'waiting' : projection.state,
-                projection, asOfSeq: value.asOfSeq };
-            }
-          }
-        } catch (error) { if (signal?.aborted) throw error; }
-        sessions[index] = item;
-      }
+function createNativeReadReceipt({ getView, getGeneration, call, schedule = setTimeout,
+  cancel = clearTimeout, interval = 2000, onError = () => {} }) {
+  let stopped = false, timer = null, running = false, rerun = false, request = null;
+  const eligible = v => v?.active === true && v.ready === true && v.nativeRead === true &&
+    v.visible === true && v.focused === true && typeof v.sessionId === 'string' && v.sessionId.length > 0;
+  async function run() {
+    if (stopped) return;
+    if (running) { rerun = true; return; }
+    cancel(timer); timer = null;
+    const view = getView(), generation = getGeneration();
+    if (!eligible(view) || !generation) return;
+    running = true; const controller = new AbortController(); request = controller;
+    const valid = () => { const v = getView(); return !stopped && !controller.signal.aborted &&
+      getGeneration() === generation && eligible(v) && v.sessionId === view.sessionId; };
+    try {
+      const result = await call(CHANNEL, 'pending', { sessionId: view.sessionId }, controller.signal);
+      if (!valid() || !result?.ok) return;
+      const item = result.value;
+      if (!item || item.kind !== 'terminal' || typeof item.revision !== 'string' ||
+          !Number.isSafeInteger(item.turn) || item.turn < 0 || !Number.isSafeInteger(item.eventSeq) || item.eventSeq < 0) return;
+      await call(CHANNEL, 'read', { sessionId: view.sessionId, kind: 'terminal',
+        revision: item.revision, turn: item.turn, eventSeq: item.eventSeq }, controller.signal);
+    } catch (error) { if (!controller.signal.aborted) onError(error); }
+    finally {
+      running = false; request = null;
+      if (!stopped && rerun) { rerun = false; void run(); }
+      else if (!stopped && eligible(getView()) && getGeneration()) timer = schedule(() => void run(), interval);
     }
-    await Promise.all(Array.from({ length: Math.min(Math.max(1, concurrency), 4, ids.length) }, worker));
-    return { ok: true, value: { sessions } };
+  }
+  return {
+    refresh() { if (stopped) return; request?.abort(); cancel(timer); timer = null; void run(); },
+    stop() { stopped = true; rerun = false; cancel(timer); timer = null; request?.abort(); },
   };
 }
 
-/** Client-only immutable workspace acceptance source. Never infers completion
- * from titles, unread flags or idle/running=false; never mutates Session stores.
- */
-const FILTER_ID = 'dsh-native-taskbar-badge.completed';
-function isMainSummary(summary) {
-  return summary && typeof summary.id === 'string' && summary.id.length > 0 &&
-    summary.origin !== 'subagent' && summary.header?.origin !== 'subagent' &&
-    (summary.delegationDepth ?? summary.header?.delegationDepth ?? 0) === 0;
-}
-const isPending = status => status?.pendingInteraction !== undefined && status.pendingInteraction !== null;
-// Public ClientSessions DTO uses parentId (including catalog/retained children).
-// Host-shaped parentSessionId/header fields are only explicit fallback inputs.
-const parentKey = summary => summary?.parentId ?? summary?.parentSessionId ?? summary?.header?.parentSession;
-function descendantActivity(byId, statuses) {
-  const running = new Set(), unresolvedRunningIds = new Set();
-  for (const child of Object.values(byId)) {
-    if (child?.origin !== 'subagent' && child?.header?.origin !== 'subagent') continue;
-    if (child.running !== true && statuses.get(child.id)?.running !== true) continue;
-    let current = child; const seen = new Set();
-    while (current && !seen.has(current.id)) {
-      seen.add(current.id);
-      const parentId = parentKey(current);
-      const parent = parentId === undefined ? undefined : byId[parentId];
-      if (!parent) { unresolvedRunningIds.add(child.id); break; }
-      if (isMainSummary(parent)) { running.add(parent.id); break; }
-      current = parent;
-    }
-    if (current && seen.has(current.id) && !running.has(current.id) &&
-        (parentKey(current) === current.id || seen.has(parentKey(current)))) unresolvedRunningIds.add(child.id);
-  }
-  // A disconnected running orphan is not evidence against every other main.
-  // Only an ancestry path that reaches a canonical main can veto that main.
-  return { running, unresolvedRunningIds };
-}
-function createCompletedFilter({ sessions, statuses, generation, classify,
-  schedule = setTimeout, cancel = clearTimeout, now = Date.now, unknownRetryMs = 30000, batchSize = 100 }) {
-  let enabled = false, disposed = false, revision = 0, timer = null, request = null, activeRun = null, rerun = false;
-  let observedGeneration = generation.getSnapshot(), lastSignature = '';
-  const records = new Map(), listeners = new Set();
-  let snapshot = { enabled: false, matchingSessionIds: new Set(), pendingSessionIds: new Set(), unknownSessionIds: new Set() };
-  function inputs() {
-    const list = sessions.getSnapshot(); const byId = list?.byId ?? {};
-    const runtime = statuses?.getSnapshot?.() ?? new Map();
-    const descendants = descendantActivity(byId, runtime);
-    const ids = [...new Set(list?.ids ?? Object.keys(byId))];
-    return ids.map(id => byId[id]).filter(isMainSummary).map(summary => {
-      const status = runtime.get(summary.id);
-      const busy = summary.blank === true || summary.running === true || status?.running === true ||
-        isPending(status) || descendants.running.has(summary.id);
-      const stamp = JSON.stringify([summary.updatedAt, summary.running, summary.blank, summary.origin,
-        summary.depth ?? summary.delegationDepth, status?.running, status?.pendingInteraction?.key,
-        busy, summary.projectionValues?.[COMPLETION_KEY]]);
-      return { id: summary.id, stamp, busy };
+/** Public sources only; install once globally, independently of turnTail slots. */
+function applyNativeReadSync(ctx) {
+  const list = ctx.sessions?.list, current = ctx.uiSession?.current;
+  const statuses = ctx.uiSession?.sessionStatus, generation = ctx.connection?.generation;
+  if ([list, current, statuses, generation].some(s => typeof s?.getSnapshot !== 'function' || typeof s?.subscribe !== 'function')) return false;
+  ctx.effect(() => {
+    const driver = createNativeReadReceipt({
+      getGeneration: () => generation.getSnapshot(), call: (...args) => ctx.connection.rpc.call(...args),
+      getView: () => {
+        const sessionId = current.getSnapshot()?.key, catalog = list.getSnapshot();
+        const row = catalog?.byId?.[sessionId], status = statuses.getSnapshot()?.get(sessionId);
+        const main = row && row.origin !== 'subagent' && row.header?.origin !== 'subagent' &&
+          (row.delegationDepth ?? row.header?.delegationDepth ?? 0) === 0;
+        const mainViewCount = row?.retainedBy?.mainView;
+        return { sessionId, ready: catalog?.phase === 'ready' && row?.blank === false,
+          active: Boolean(main && Number.isSafeInteger(mainViewCount) && mainViewCount > 0), nativeRead: status?.completionUnread === false,
+          visible: document.visibilityState === 'visible', focused: document.hasFocus() };
+      },
     });
-  }
-  function publish(loading = new Set()) {
-    const matchingSessionIds = new Set(), pendingSessionIds = new Set(), unknownSessionIds = new Set();
-    if (enabled) for (const row of inputs()) {
-      if (row.busy) continue;
-      const record = records.get(row.id);
-      if (loading.has(row.id) && (!record || record.stamp !== row.stamp)) pendingSessionIds.add(row.id);
-      else if (!record || record.stamp !== row.stamp || record.state === 'unknown') unknownSessionIds.add(row.id);
-      else if (record.state === 'completed') matchingSessionIds.add(row.id);
+    const refresh = () => driver.refresh();
+    const stops = [list, current, statuses, generation].map(s => s.subscribe(refresh));
+    document.addEventListener('visibilitychange', refresh);
+    window.addEventListener('focus', refresh); window.addEventListener('blur', refresh); refresh();
+    return () => {
+      driver.stop(); for (const stop of stops) stop(); document.removeEventListener('visibilitychange', refresh);
+      window.removeEventListener('focus', refresh); window.removeEventListener('blur', refresh);
+    };
+  }, 'taskbar badge: native main-view read synchronization');
+  return true;
+}
+
+/** Live unread filter using the same public status bit as the native sidebar dot.
+ * Completion success, running state, goal phase and native badge totals are NOT
+ * read evidence. Never open sessions, read logs, issue RPCs or mark anything read.
+ */
+const UNREAD_FILTER_ID = 'dsh-native-taskbar-badge.unread';
+function createUnreadFilter({ sessions, statuses }) {
+  let enabled = false, disposed = false;
+  const listeners = new Set();
+  let snapshot = { enabled, matchingSessionIds: new Set(), pendingSessionIds: new Set(), unknownSessionIds: new Set() };
+  function publish() {
+    if (disposed) return;
+    const matchingSessionIds = new Set();
+    if (enabled) {
+      const list = sessions.getSnapshot(), byId = list?.byId ?? {};
+      const runtime = statuses.getSnapshot();
+      for (const id of list?.ids ?? Object.keys(byId)) {
+        const summary = byId[id];
+        if (!summary || typeof id !== 'string' || !id || summary.origin === 'subagent' ||
+            summary.header?.origin === 'subagent' || (summary.delegationDepth ?? summary.header?.delegationDepth ?? 0) !== 0) continue;
+        if (runtime.get(id)?.completionUnread === true) matchingSessionIds.add(id);
+      }
     }
-    snapshot = { enabled, matchingSessionIds, pendingSessionIds, unknownSessionIds };
+    if (snapshot.enabled === enabled && matchingSessionIds.size === snapshot.matchingSessionIds.size &&
+        [...matchingSessionIds].every(id => snapshot.matchingSessionIds.has(id))) return;
+    snapshot = { enabled, matchingSessionIds, pendingSessionIds: new Set(), unknownSessionIds: new Set() };
     for (const listener of [...listeners]) listener();
   }
-  const source = { getSnapshot: () => snapshot, subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); } };
-  async function refresh(force = false) {
-    if (disposed || !enabled) return;
-    if (activeRun) { rerun = true; return; }
-    cancel(timer); timer = null;
-    const currentGeneration = generation.getSnapshot();
-    if (!currentGeneration) { records.clear(); publish(); return; }
-    if (observedGeneration !== currentGeneration) { records.clear(); observedGeneration = currentGeneration; }
-    const rows = inputs(), ids = new Set(rows.map(row => row.id));
-    for (const id of records.keys()) if (!ids.has(id)) records.delete(id);
-    const wanted = rows.filter(row => !row.busy && (() => {
-      const record = records.get(row.id);
-      return force || !record || record.stamp !== row.stamp || record.state === 'unknown' && record.retryAt <= now();
-    })());
-    const loading = new Set(wanted.map(row => row.id)); publish(loading);
-    if (!wanted.length) {
-      const retryAt = Math.min(...[...records.values()].filter(record => record.state === 'unknown').map(record => record.retryAt));
-      if (Number.isFinite(retryAt)) timer = schedule(() => void refresh(), Math.max(1000, retryAt - now()));
-      return;
-    }
-    const token = ++revision, controller = new AbortController(); request = controller; activeRun = token;
-    const valid = () => !disposed && enabled && !controller.signal.aborted && token === revision && generation.getSnapshot() === currentGeneration;
-    try {
-      for (let offset = 0; offset < wanted.length; offset += batchSize) {
-        const selected = wanted.slice(offset, offset + batchSize);
-        const response = await classify(selected.map(row => row.id), controller.signal);
-        if (!valid()) return;
-        if (!response?.ok || !Array.isArray(response.value?.sessions)) throw new Error('Completion authority unavailable');
-        const byId = new Map(response.value.sessions.filter(item => item && typeof item.sessionId === 'string').map(item => [item.sessionId, item]));
-        for (const row of selected) {
-          const value = byId.get(row.id);
-          const state = value && ['completed','running','waiting','error','incomplete','unknown'].includes(value.state) ? value.state : 'unknown';
-          records.set(row.id, { state, stamp: row.stamp, retryAt: state === 'unknown' ? now() + unknownRetryMs : Infinity });
-          loading.delete(row.id);
-        }
-        publish(loading);
-      }
-    } catch (error) {
-      if (valid()) {
-        for (const row of wanted) records.set(row.id, { state: 'unknown', stamp: row.stamp, retryAt: now() + unknownRetryMs });
-        publish();
-      }
-    } finally {
-      activeRun = null; request = null;
-      if (!disposed && enabled && rerun) { rerun = false; void refresh(); }
-      else if (!disposed && enabled) {
-        // Only unknown/error baselines retry on a bounded timer. Known cold logs
-        // are NOT re-read every 1.5 seconds; live catalog/projection events dirty them.
-        const retryAt = Math.min(...[...records.values()].filter(record => record.state === 'unknown').map(record => record.retryAt));
-        if (Number.isFinite(retryAt)) timer = schedule(() => void refresh(), Math.max(1000, retryAt - now()));
-      }
-    }
-  }
-  function invalidate(clear = false) {
-    const currentGeneration = generation.getSnapshot();
-    const signature = JSON.stringify(inputs().map(row => [row.id, row.stamp]));
-    if (!clear && signature === lastSignature && currentGeneration === observedGeneration) return;
-    lastSignature = signature;
-    ++revision; request?.abort(); cancel(timer); timer = null;
-    if (clear) records.clear();
-    publish(); if (enabled) void refresh();
-  }
-  const unsubscribeSessions = sessions.subscribe(() => invalidate());
-  const unsubscribeStatuses = statuses?.subscribe?.(() => invalidate()) ?? (() => {});
-  const unsubscribeGeneration = generation.subscribe(() => invalidate(true));
+  const unsubscribeSessions = sessions.subscribe(publish);
+  const unsubscribeStatuses = statuses.subscribe(publish);
   return {
-    source,
-    setEnabled(value) {
-      value = Boolean(value);
-      if (disposed || value === enabled) return;
-      enabled = value; ++revision; request?.abort(); cancel(timer); timer = null; rerun = false;
-      publish(); if (enabled) void refresh(true);
-    },
-    refresh: () => refresh(true),
-    dispose() {
-      disposed = true; ++revision; request?.abort(); cancel(timer);
-      unsubscribeSessions(); unsubscribeStatuses(); unsubscribeGeneration(); listeners.clear();
-    },
+    source: { getSnapshot: () => snapshot, subscribe(listener) {
+      if (disposed) return () => {};
+      listeners.add(listener); return () => listeners.delete(listener);
+    } },
+    setEnabled(value) { if (!disposed) { enabled = Boolean(value); publish(); } },
+    dispose() { if (disposed) return; disposed = true; unsubscribeSessions(); unsubscribeStatuses(); listeners.clear(); },
   };
 }
 
-/** Product-owned client dictionaries; technical namespace stays stable. */
-const SIDEBAR_NAMESPACE = 'dsh-native-taskbar-badge.completedFilter';
+/** Product-owned client dictionaries. */
+const SIDEBAR_NAMESPACE = 'dsh-native-taskbar-badge.unreadFilter';
 const sidebarMessages = {
   zh: {
-    toggle: '只看已完成主会话',
-    enableTooltip: '只显示DSH实际工作已成功结束的主会话',
-    disableTooltip: '关闭只看已完成；保留搜索和其他筛选',
-    loading: '正在判定 {count} 个会话的完成状态…',
-    unknown: '{count} 个会话尚无可靠完成状态，暂不显示。',
-    empty: '暂无符合当前筛选的已完成主会话。',
-    clear: '关闭“只看已完成”',
-    retry: '重新判定未知状态',
-    unavailable: '已完成会话筛选不可用：缺少工作区扩展接口。',
+    enableTooltip: '未读过滤',
+    disableTooltip: '重置条件',
+    empty: '当前条件下没有未读会话。',
+    clear: '重置条件',
+    unavailable: '未读过滤不可用：缺少工作区扩展接口。',
   },
   en: {
-    toggle: 'Only completed main sessions',
-    enableTooltip: 'Show only main sessions whose consumed DSH work ended successfully',
-    disableTooltip: 'Turn off completed-only; keep search and other filters',
-    loading: 'Checking completion for {count} sessions…',
-    unknown: '{count} sessions have no reliable completion baseline and are excluded.',
-    empty: 'No completed main sessions match the current filters.',
-    clear: 'Turn off completed-only',
-    retry: 'Recheck unknown states',
-    unavailable: 'Completed-session filter unavailable: the workspace extension API is missing.',
+    enableTooltip: 'Unread filter',
+    disableTooltip: 'Reset filter',
+    empty: 'No unread sessions match the current filters.',
+    clear: 'Reset filter',
+    unavailable: 'Unread filter unavailable: the workspace extension API is missing.',
   },
 };
 
-/** Official workspace-slot/filter contribution. No DOM discovery or hiding. */
+/** Native workspace-slot contribution. File name retained for source compatibility;
+ * the bell now filters unread sessions, never completed-session projections.
+ */
 const buttonStyle = { width: 28, height: 28, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   border: 0, borderRadius: 6, cursor: 'pointer', outlineOffset: 2, padding: 0 };
-function CompletedFilterButton({ wide = true, useCompletedFilter, setCompletedFilterEnabled, t }) {
-  const enabled = useCompletedFilter(state => state.enabled);
-  return createElement('button', { type: 'button', 'aria-label': t('toggle'), 'aria-pressed': enabled,
-    title: t(enabled ? 'disableTooltip' : 'enableTooltip'), onClick: () => setCompletedFilterEnabled(!enabled),
+function UnreadFilterButton({ wide = true, useUnreadFilter, setUnreadFilterEnabled, t }) {
+  const enabled = useUnreadFilter(state => state.enabled);
+  return createElement('button', { type: 'button', 'aria-label': t(enabled ? 'disableTooltip' : 'enableTooltip'), 'aria-pressed': enabled,
+    title: t(enabled ? 'disableTooltip' : 'enableTooltip'), onClick: () => setUnreadFilterEnabled(!enabled),
     style: { ...buttonStyle, width: wide ? 28 : 36, height: wide ? 28 : 36,
       color: enabled ? 'var(--dsw-alias-state-business-primary, #3485ed)' : 'var(--dsw-alias-label-secondary, currentColor)',
       background: enabled ? 'var(--dsw-alias-interactive-bg-hover, rgba(52,133,237,.12))' : 'transparent' } },
-    createElement('svg', { width: 17, height: 17, viewBox: '0 0 20 20', fill: 'none', 'aria-hidden': true },
-      createElement('circle', { cx: 10, cy: 10, r: 7.2, stroke: 'currentColor', strokeWidth: 1.5 }),
-      createElement('path', { d: 'm6.2 10 2.4 2.5 5.2-5.3', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' })));
+    createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none',
+      stroke: 'currentColor', strokeWidth: 1, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+      createElement('path', { d: 'M6.5 13a1.5 1.5 0 0 0 3 0M3 11.5h10l-1.25-1.75V6a3.75 3.75 0 0 0-7.5 0v3.75L3 11.5ZM8 1.25v1' })));
 }
-function CompletedFilterStatus({ active, visibleCount, pendingCount = 0, unknownCount = 0,
-  useCompletedFilter, setCompletedFilterEnabled, retryCompletedFilter, unavailable = false, t }) {
+function UnreadFilterStatus({ active, visibleCount, useUnreadFilter, setUnreadFilterEnabled, unavailable = false, t }) {
   if (unavailable) return createElement('div', { role: 'status', style: { padding: '8px 12px', fontSize: 12 } }, t('unavailable'));
-  const enabled = useCompletedFilter(state => state.enabled);
-  if (!enabled || !active || visibleCount > 0 && pendingCount === 0 && unknownCount === 0) return null;
-  const rows = [];
-  if (pendingCount > 0) rows.push(createElement('div', { key: 'pending' }, t('loading', { count: pendingCount })));
-  if (unknownCount > 0) rows.push(createElement('div', { key: 'unknown' }, t('unknown', { count: unknownCount })));
-  if (visibleCount === 0 && pendingCount === 0) rows.push(createElement('div', { key: 'empty' }, t('empty')));
-  rows.push(createElement('button', { key: 'clear', type: 'button', onClick: () => setCompletedFilterEnabled(false),
-    style: { marginTop: 6, cursor: 'pointer' } }, t('clear')));
-  if (unknownCount > 0) rows.push(createElement('button', { key: 'retry', type: 'button', onClick: retryCompletedFilter,
-    style: { marginTop: 6, marginLeft: 6, cursor: 'pointer' } }, t('retry')));
+  const enabled = useUnreadFilter(state => state.enabled);
+  if (!enabled || !active || visibleCount > 0) return null;
   return createElement('div', { role: 'status', 'aria-live': 'polite',
-    style: { padding: '8px 12px', fontSize: 12, color: 'var(--dsw-alias-label-secondary, currentColor)' } }, ...rows);
+    style: { padding: '8px 12px', fontSize: 12, color: 'var(--dsw-alias-label-secondary, currentColor)' } },
+    createElement('div', null, t('empty')),
+    createElement('button', { type: 'button', onClick: () => setUnreadFilterEnabled(false),
+      style: { marginTop: 6, cursor: 'pointer' } }, t('clear')));
 }
-function applyCompletedSidebar(ctx) {
-  ctx.effect(() => ctx.locale.register(SIDEBAR_NAMESPACE, sidebarMessages), 'session alerts: sidebar dictionaries');
+function applyUnreadSidebar(ctx) {
+  ctx.effect(() => ctx.locale.register(SIDEBAR_NAMESPACE, sidebarMessages), 'session alerts: unread sidebar dictionaries');
   const api = ctx.uiWorkspace.sessionFilters;
   if (api?.apiVersion !== 1 || typeof api.register !== 'function') {
-    ctx.logger?.warn?.('DSH Session Alerts: completed-session workspace API unavailable; no fake toggle mounted.');
+    ctx.logger?.warn?.('DSH Session Alerts: unread workspace API unavailable; no fake toggle mounted.');
     ctx.slots.inject('sidebar.workspaces.filter.status', () => ctx.slots.register({
-      name: 'sidebar.workspaces.filter.status', id: `${FILTER_ID}.unavailable`, locale: SIDEBAR_NAMESPACE,
+      name: 'sidebar.workspaces.filter.status', id: `${UNREAD_FILTER_ID}.unavailable`, locale: SIDEBAR_NAMESPACE,
       inject: () => ({ unavailable: true }),
-    }, CompletedFilterStatus));
+    }, UnreadFilterStatus));
     return;
   }
   ctx.effect(() => {
-    const model = createCompletedFilter({ sessions: ctx.sessions.list, statuses: ctx.uiSession.sessionStatus,
-      generation: ctx.connection.generation, classify: createCompletionReader(ctx.remote) });
+    const model = createUnreadFilter({ sessions: ctx.sessions.list, statuses: ctx.uiSession.sessionStatus });
     let removeFilter, removeHeader, removeStatus;
     try {
-      removeFilter = api.register({ id: FILTER_ID, source: model.source });
-      const injected = () => ({ hooks: { completedFilter: model.source },
-        setCompletedFilterEnabled: value => model.setEnabled(value), retryCompletedFilter: () => model.refresh() });
+      removeFilter = api.register({ id: UNREAD_FILTER_ID, source: model.source });
+      const injected = () => ({ hooks: { unreadFilter: model.source }, setUnreadFilterEnabled: value => model.setEnabled(value) });
       removeHeader = ctx.slots.inject('sidebar.workspaces.header.action', () => ctx.slots.register({
-        name: 'sidebar.workspaces.header.action', id: FILTER_ID, order: 50, locale: SIDEBAR_NAMESPACE, inject: injected,
-      }, CompletedFilterButton));
+        name: 'sidebar.workspaces.header.action', id: UNREAD_FILTER_ID, order: 50, locale: SIDEBAR_NAMESPACE, inject: injected,
+      }, UnreadFilterButton));
       removeStatus = ctx.slots.inject('sidebar.workspaces.filter.status', () => ctx.slots.register({
-        name: 'sidebar.workspaces.filter.status', id: FILTER_ID, order: 50, locale: SIDEBAR_NAMESPACE, inject: injected,
-      }, CompletedFilterStatus));
+        name: 'sidebar.workspaces.filter.status', id: UNREAD_FILTER_ID, order: 50, locale: SIDEBAR_NAMESPACE, inject: injected,
+      }, UnreadFilterStatus));
     } catch (error) { model.dispose(); removeFilter?.(); removeHeader?.(); removeStatus?.(); throw error; }
     return () => { model.dispose(); removeHeader?.(); removeStatus?.(); removeFilter?.(); };
-  }, 'session alerts: independent completed-session sidebar');
+  }, 'session alerts: live unread-session sidebar');
 }
 
-/** Official client contribution. The marker exists only in a materialized Chat result footer. */
+/** Official client contribution: scoped native-read synchronization and exact Chat footer receipts. */
 const name = 'native-taskbar-badge-client';
 const inject = ['slots', 'sessions', 'uiSession', 'uiConversation', 'connection', 'remote', 'remote.session', 'locale', 'uiWorkspace'];
 function apply(ctx) {
-  applyCompletedSidebar(ctx);
-  function ResultReadMarker({ sessionId, turn, useBadgeChat }) {
+  applyUnreadSidebar(ctx);
+  applyNativeReadSync(ctx);
+  function ResultReadMarker({ sessionId, turn: slotTurn, useBadgeChat }) {
     const marker = useRef(null);
+    // Current Chat slots expose a TimelineTurn object; older SDKs passed the
+    // numeric turn. Normalize only that identity, never trust slot seq/end as
+    // read evidence. Keep the official Chat timeline lookup reactive below.
+    const turn = typeof slotTurn === 'number' ? slotTurn : slotTurn?.turn;
     // The slot's seq can be the final assistant message seq, NOT turn/end.
     // Use the official Chat timeline's end seq for the read CAS proof instead.
     const eventSeq = useBadgeChat((chat) => chat?.timeline.turns.get(turn)?.end?.seq);

@@ -13,9 +13,22 @@ npm run test:pack
 
 The runtime has no third-party Python/font dependency. Asset regeneration and Python asset tests use pinned development-only Pillow: provision `python -m pip install -r tools/requirements-assets.txt`, then test offline. Build deterministically wraps the authored client and receipt driver in the official lazy loader factory; `npm test` first checks that the shipped bundle matches those sources. Packaging uses an existing npm with `pack --ignore-scripts --offline`; archives, cache and unpacked verification stay in ignored `artifacts/`. There are no npm runtime dependencies; the separate artwork requirements file pins the development renderer.
 
-## 0.3.0 Session Alerts verification
+## Current unread/read-synchronization repair
 
-The current portable JavaScript suite passes **180 tests**. It covers the header/status contribution contract, accessible bilingual toggle, missing-API fail-closed behavior, set-source composition, read-only four-concurrent cold reads, known-baseline caching, generation cancellation, descendant activity/unknown ancestry, consumed-work accounting, strict-goal failure/clear, fork cuts and independent sidecar output. It retains all prior unread/read-CAS/native/asset regressions. No Session metadata is written and no Agent/native helper is activated by these tests.
+The root fake suite covers native unread filtering, exact bilingual bell states, read/new-unread transitions, current-view receipt qualification, malformed nonblank/retention proof, cancellation round trips, revision replacement, waiting preservation and lifecycle cleanup. The pinned workspace suite also runs real React unread-source integration across grouped/tree/flat/search views; CI runs all of its test files, not only the original SDK file.
+
+Use the commands above, and for the separate compatibility project:
+
+```powershell
+node compat/workspace-sdk/scripts/build.mjs
+node --test compat/workspace-sdk/test/*.test.mjs
+```
+
+Provision its locked test-only React dependencies separately as described in its README. These are fake/isolated tests, not production-profile installation or new public native screenshot evidence. The package assertions require the unread module and both language guides and exclude diagnostic/install artifacts. For durable deployment/reinstall checks, follow the [archive/lock/hard-link precautions](operations.md#durable-updates-archives-locks-and-hard-links), not in-place edits of a live package.
+
+## Historical 0.3.0 baseline
+
+The original 0.3.0 portable JavaScript suite passed **180 tests**. It covers the header/status contribution contract, accessible bilingual toggle, missing-API fail-closed behavior, set-source composition, read-only four-concurrent cold reads, known-baseline caching, generation cancellation, descendant activity/unknown ancestry, consumed-work accounting, strict-goal failure/clear, fork cuts and independent sidecar output. It retains all prior unread/read-CAS/native/asset regressions. No Session metadata is written and no Agent/native helper is activated by these tests.
 
 Optional oracle checks execute the **actual exported** official `dsh-agent.foldConsumedWork` and full `dsh-goal.goalProjectionDefinition`, not a guessed latest-turn policy. They compare 80 varied valid rounds at each prefix, validate real strict-goal corruption/clear behavior and fork suffixes, and invoke both real completion-only Host entry locations using only `sessionProjections`:
 
@@ -26,11 +39,11 @@ node --test tools/completion-sdk.test.mjs
 
 The separate `compat/workspace-sdk` test suite builds its exact hash-pinned native workspace baseline and verifies grouping/tree/flat/search/other-filter composition with real React rendering. CI provisions its isolated locked React development dependencies separately; the main package excludes that whole engineering subtree. These tests are not a claim that the new sidebar UI was live-accepted on every DSH release or OS. Local GUI/profile loading is a separate operator action; the badge screenshots demonstrate only the earlier controlled native probes.
 
-### Remote namespace and real GUI acceptance
+### Historical Remote namespace and GUI checks
 
 Both client entry declarations explicitly inject `remote.session` as well as `remote`. This is a real Cordis namespace dependency; package graph dependencies alone do not grant it. `tools/client-namespace-sdk.test.mjs` mounts the complete official ClientRemoteService and generated ApiRemotes assembly under real Cordis, reproduces the missing-inject error, and runs the production reader through both actual client declarations. Only the transport/type-registry storage is fake; the custom completion wire value is preserved end to end. Run it with the same `DSH_BADGE_SDK_ROOT` environment variable.
 
-An operator separately verified the actual GUI: the 28×28 button was hit-testable, pressed state toggled, the view changed from 7 visible main rows/15 tree items to 6 completed rows/11 items (including a known authoritative completed Session and an older result beyond the initial native limit), then restored the exact original rows/items and unchanged query. No slot errors were reported. That operator-owned deployment is not performed by the source tests and does not imply every OS/version is live-tested. The standalone entry lets the old native engine retain its actual identity and unread memory.
+For the historical completed-only baseline (not the current unread bell), an operator separately verified the actual GUI: the 28×28 button was hit-testable, pressed state toggled, the view changed from 7 visible main rows/15 tree items to 6 completed rows/11 items (including a known authoritative completed Session and an older result beyond the initial native limit), then restored the exact original rows/items and unchanged query. No slot errors were reported. That operator-owned deployment is not performed by the source tests and does not imply every OS/version is live-tested. The standalone entry lets the old native engine retain its actual identity and unread memory.
 
 ## 0.2.2 artwork verification
 
@@ -52,7 +65,7 @@ Coverage includes:
 - Native foreground suppression absent, aggregate count across matching windows, full-executable filtering, resource cleanup, bounded helper restart and topology/draw retries.
 - Chinese-default/English/explicit-auto fallback, path configuration failures, 100 original ICOs and package privacy exclusions.
 
-The SDK contracts were inspected in read-only snapshots of the shipped official packages, including client modules, Connection, Session, UI Session, Conversation and Chat. No SDK or application installation source was changed. Built-in `completionUnread` was rejected as a read authority because it uses main-view retention without visibility/revision proof.
+The SDK contracts were inspected in read-only snapshots of the shipped official packages, including client modules, Connection, Session, UI Session, Conversation and Chat. No SDK or application installation source was changed. At that 0.2.1 baseline, built-in `completionUnread` alone was rejected as read proof because it uses main-view retention without visibility/revision checks. The current scoped main-view path adds those qualification and CAS fences; it still does not trust a blanket false unread set.
 
 ## Official SDK route-registration regression
 
@@ -68,6 +81,6 @@ The three full-framework regressions passed: the old direct getter call fails ev
 
 ## Limits of this evidence
 
-Fake browser adapters do not constitute real-browser layout/occlusion acceptance; simulated COM does not establish actual taskbar drawing, DPI, shell grouping or Explorer behavior. [CI](../.github/workflows/test.yml) runs fake logic on Windows and Ubuntu; a successful Windows runner is not a native screenshot. Host restart persistence, view-only read of pending questions and non-Chat auto-acknowledgement are not implemented. See [behavior](behavior.md) and [image provenance](images.md).
+Fake browser adapters do not constitute real-browser layout/occlusion acceptance; simulated COM does not establish actual taskbar drawing, DPI, shell grouping or Explorer behavior. [CI](../.github/workflows/test.yml) runs fake logic on Windows and Ubuntu; a successful Windows runner is not a native screenshot. Host restart persistence and view-only resolution of pending questions are not implemented. Footer exposure is Chat-specific; current-view synchronization depends on supported public native-read sources and is not a claim of universal renderer coverage. See [behavior](behavior.md) and [image provenance](images.md).
 
 Any separately captured native screenshots must clearly distinguish real shell pixels from controlled input counts. A screenshot of a probe value proves rendering, **not** that five real sessions ran or that a real client acknowledgement caused the transition. Never label illustrations as native captures.

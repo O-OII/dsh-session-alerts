@@ -1,36 +1,58 @@
-# Per-session counting and exact read receipts
+# Per-session counting and revision-safe read receipts
 
 [README](../README.md) · [简体中文](behavior.zh-CN.md)
 
-## The only acknowledgement policy
+## Counted attention is not the sidebar filter
 
-Count the union of main sessions with an unread eligible result or an unresolved input request, once per session. Subagent origin/delegation is filtered. Display `1`–`99`, then `99+` (logical count capped at 999). Main-session completion/error/blocked/output-limit events count regardless of which application/window is foreground.
+Count the union of main sessions with an unread eligible result or an unresolved input request, once per session. Subagent origin/delegation is excluded. Display `1`–`99`, then `99+` (logical count capped at 999). Eligible completion/error/blocked/output-limit events can count regardless of which application is foreground.
 
-Example: A, B, C, D and E finish. Count = **5**. Focus DSH while A's older content is visible: **5**. Scroll A's newest result footer into view: **4**. B–E remain unread. Another result in B replaces B's revision without adding another session count. Viewing an older B turn cannot acknowledge that newer revision.
+The [bell filter](unread-filter.md) instead reads native browser-local `completionUnread` flags. It is not a list of successful tasks, and resetting the bell neither acknowledges results nor clears the taskbar. Waiting interactions, notification preferences, background reruns and different state lifetimes can make these two sets differ.
 
-No OS-focus read inference, window-clear mode, compatibility fallback, DOM-title discovery, general session-open listener or client-reported blanket “clear all” operation exists.
+## Two scoped acknowledgement paths
 
-## Official client → Host bridge
+Both paths use official public client services and the same authenticated per-session Host compare-and-swap (CAS). Neither performs a global clear or infers all sessions read from OS foreground focus.
 
-1. The official package client contribution registers a one-pixel measurement marker in the `conversation.chat.turnTail` list Slot. The footer exists only after Chat has materialized a real `turn/end`; it does not overwrite the Chat renderer or patch application sources.
-2. Its standard hook reads the actual `turn/end.seq` from `uiConversation.binding(binding).target('chat').timeline`. The Slot's own `seq` may identify an earlier assistant message and is **not** accepted as end evidence.
-3. `uiSession.current` must identify this main Session. The document must be visible and focused; IntersectionObserver must report the mounted footer in the viewport; own-marker geometry/visibility is checked again before sending. Merely opening/retaining a Session proves nothing. An unloaded/inactive/hidden result cannot acknowledge.
-4. Through authenticated, lifecycle-scoped `connection.rpc`, the client reads just this Session's pending revision, verifies its kind/turn/end-seq, then sends `{ sessionId, revision, kind, turn, eventSeq }` to the read endpoint.
-5. The Host checks owner access, input shape, cancellation, mount lifetime, random mount epoch and the exact current revision. Its synchronous compare-and-swap clears only that result. Client state never optimistically decrements the number.
+### Current native-read main view
 
-Each new attention revision is unique within a mount; a random mount epoch rejects previous-Host receipts. Result replacement and read handling are synchronous. ACK-before-new-result leaves the new result unread; new-result-before-old-ACK rejects the old receipt. Duplicate/two-window ACKs clear one result once. Leaving/re-entering visibility aborts in-flight evidence; reconnect acquires new proof. The Host holds no sticky active-window lease capable of reading future events automatically.
+The client installs one lifecycle-owned synchronization driver, independently of any Chat footer. It requires all of:
+
+- `uiSession.current` identifies an existing main session, not a subagent/delegated child.
+- The catalog is `ready`, `blank` is explicitly `false`, and `retainedBy.mainView` is a positive safe integer. Missing or malformed proof fails closed.
+- Native `uiSession.sessionStatus` explicitly reports `completionUnread === false` for that session.
+- The document is visible and focused, and the connection generation remains the same.
+
+Only this current session's pending terminal revision is queried and acknowledged. It need not scroll back to an old result footer. Source notifications, focus/visibility changes and reconnects invalidate in-flight evidence. A single two-second heartbeat while eligible catches later results or publication-order races; there is no background sweep and at most one in-flight request per driver. Hiding/unloading the view cancels requests/timers and releases subscriptions.
+
+A fresh page's false unread defaults do **not** authorize a bulk read of every catalog session. Native read state is a bounded input to this current-view policy, not a durable read watermark. A result appearing between `pending` and `read` changes the Host revision and rejects the stale CAS; a later eligible cycle may acknowledge that new revision as well.
+
+### Exact visible Chat result footer
+
+The existing footer contribution remains an independent path:
+
+1. Register a one-pixel measurement marker in the official `conversation.chat.turnTail` list Slot; do not replace Chat or patch application sources.
+2. Normalize the Slot's current `TimelineTurn` object (`turn.turn`) or legacy numeric turn. Read the reactive official Chat timeline's actual `turn/end.seq`. The Slot's own `seq` or embedded old end is not authoritative.
+3. Require the active main-session identity, document visibility/focus, IntersectionObserver intersection, and rechecked marker geometry/visibility.
+4. Read only that session's pending terminal revision, require the exact displayed turn/end sequence, and send `{ sessionId, revision, kind, turn, eventSeq }`.
+
+Thus displaying an old footer alone cannot acknowledge a newer result. If the separate current native-read main-view path qualifies, it can acknowledge the current terminal without relying on that old footer. Missing IntersectionObserver disables the footer path, not an otherwise supported current-view path.
+
+## Shared Host fence
+
+The Host checks owner access, payload shape, cancellation, mount lifetime, random mount epoch and the exact current revision. Its synchronous CAS clears only the matching terminal result; clients do not optimistically decrement the number. ACK-before-new-result leaves that new result pending; new-result-before-old-ACK rejects the old acknowledgement. Duplicate/two-window acknowledgements clear one result once. The Host stores no sticky active-window lease capable of acknowledging future events on its own.
+
+These browser conditions are read-policy evidence, not eye-tracking or proof of comprehension. OS occlusion not reflected in document visibility cannot be proven.
 
 ## Waiting, cancellation and lifecycle
 
-- With `notifyOnWaiting`, approvals/questions count until their actual decision/answer or owning operation ends. **There is no automatic view-only read receipt for these temporary composers**: the current SDK does not provide an equivalent exact rendered-question footer. The plugin deliberately does not guess from an active-session header or an open event.
-- Terminal unread and temporary waiting are retained independently within one counted session. A new turn/wait and its resolution cannot erase an older unread result. Reading that older result leaves a live request counted.
-- A new eligible terminal result supersedes the older result and retires waits from its turn. Aborts do not notify; they retire waiting while preserving an older unread result. Restored `interrupted`/`forked` history markers do not notify.
-- By default, successful intermediate turns of an active goal do not notify. Goal completion and eligible failures still do; notification preferences do not serve as read-mode switches.
-- A Host Session-store detach is object disposal, not proof of read/deletion: terminal unread and turn dedup survive; temporary waits retire and late events are rejected until a new valid turn starts.
-- Page reload, disconnect and helper restart preserve Host-memory state. **Host restart, plugin reload/disable and crash do not persist it.** Historical logs are never replayed into unread. Deleted/unviewable historical sessions can remain pending until plugin reset; no durable deletion API is inferred from object teardown.
+- With `notifyOnWaiting`, approvals/questions count until their actual decision/answer or owning operation ends. Neither read path resolves a waiting interaction by viewing it.
+- Terminal unread and temporary waiting are independent within one counted session. Reading a terminal can leave the session counted for a live request. A new turn/wait and its resolution do not by themselves erase an older unread result.
+- A new eligible terminal supersedes the older result and retires waits from its turn. Aborts do not notify; they retire waiting while preserving older unread. Restored `interrupted`/`forked` history does not notify.
+- Successful intermediate active-goal turns are suppressed by default; goal completion and eligible failures can still count.
+- Session-store detach is object disposal, not read/deletion proof: terminal unread and turn dedup survive; temporary waits retire and late events are rejected until a new valid turn starts.
+- Page reload, disconnect and helper restart preserve Host-memory state. **Host restart, plugin reload/disable and crash do not persist it.** Historical logs are never replayed into unread. Deleted/unviewable historical sessions may remain pending until plugin reset; no durable deletion API is inferred.
 
-## Native display and limitations
+## Native display and limits
 
-The helper only draws the Host's aggregate count, even in the foreground. It never reads OS foreground focus. All visible windows whose complete executable path matches receive the same overlay; cleanup revalidates recorded handles, and topology/error recovery retries the desired total. No title matching or application identity rewriting. Different Host instances sharing one executable are not distinguished: do not run competing badge providers for them. Tray-hidden windows are not restored.
+The helper only draws the Host aggregate, even in the foreground. It never reads OS foreground focus. All visible windows whose complete executable path matches receive the same overlay; cleanup revalidates handles and topology/error recovery retries the desired count. No title matching or application identity rewriting. Different Host instances sharing one executable are not distinguished; do not run competing providers. Tray-hidden windows are not restored.
 
-The automatic read contract currently covers **Chat** result footers. Other target views, an unavailable browser contribution/IntersectionObserver, or a footer never scrolled into view fail closed and retain unread. “Viewed” means the browser exposure conditions above, not eye-tracking or proof of human comprehension; OS-level occlusion not reported by document visibility cannot be proven. Fake tests establish state/bridge ordering, not all real-browser layout, shell/DPI or Explorer behavior. No synthetic preview is a native screenshot.
+Unsupported native-read sources fail closed; an inactive/hidden view is not read proof. The footer path requires materialized Chat data. These paths do not promise exact equality with the native sidebar's browser-local unread set in every background/window scenario. Fake tests establish state, qualification, cancellation and bridge ordering, not all real-browser layout, shell/DPI or Explorer behavior. No synthetic preview is a native screenshot.

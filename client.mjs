@@ -1,13 +1,18 @@
-/** Official client contribution. The marker exists only in a materialized Chat result footer. */
+/** Official client contribution: scoped native-read synchronization and exact Chat footer receipts. */
 import { createElement, useEffect, useRef } from 'react';
-import { createReadReceipt } from './read-client.mjs';
-import { applyCompletedSidebar } from './completed-sidebar.mjs';
+import { createReadReceipt, applyNativeReadSync } from './read-client.mjs';
+import { applyUnreadSidebar } from './completed-sidebar.mjs';
 export const name = 'native-taskbar-badge-client';
 export const inject = ['slots', 'sessions', 'uiSession', 'uiConversation', 'connection', 'remote', 'remote.session', 'locale', 'uiWorkspace'];
 export function apply(ctx) {
-  applyCompletedSidebar(ctx);
-  function ResultReadMarker({ sessionId, turn, useBadgeChat }) {
+  applyUnreadSidebar(ctx);
+  applyNativeReadSync(ctx);
+  function ResultReadMarker({ sessionId, turn: slotTurn, useBadgeChat }) {
     const marker = useRef(null);
+    // Current Chat slots expose a TimelineTurn object; older SDKs passed the
+    // numeric turn. Normalize only that identity, never trust slot seq/end as
+    // read evidence. Keep the official Chat timeline lookup reactive below.
+    const turn = typeof slotTurn === 'number' ? slotTurn : slotTurn?.turn;
     // The slot's seq can be the final assistant message seq, NOT turn/end.
     // Use the official Chat timeline's end seq for the read CAS proof instead.
     const eventSeq = useBadgeChat((chat) => chat?.timeline.turns.get(turn)?.end?.seq);

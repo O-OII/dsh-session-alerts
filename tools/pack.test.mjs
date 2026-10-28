@@ -59,7 +59,7 @@ test('real archive has version 0.3.0, both complete locales and all 100 icons wi
   assert.equal(packed.exports['./client'], './client.js');
   assert.equal(packed.exports['./completion'], './completion.mjs');
   assert.equal(packed.exports['./sidebar-client'], './sidebar-client.js');
-  for (const name of ['completion.mjs','completion-state.mjs','completion-contract.mjs','completion-reader.mjs','completed-filter.mjs','completed-sidebar.mjs','sidebar-messages.mjs','sidebar-client.js','sidebar-package/package.json','sidebar-package/index.mjs','sidebar-package/client.js','sidebar-package/completion.mjs','sidebar-package/cordis.patch.yml']) assert.ok(files.has(name),name);
+  for (const name of ['completion.mjs','completion-state.mjs','completion-contract.mjs','completion-reader.mjs','completed-filter.mjs','unread-filter.mjs','completed-sidebar.mjs','sidebar-messages.mjs','sidebar-client.js','sidebar-package/package.json','sidebar-package/index.mjs','sidebar-package/client.js','sidebar-package/completion.mjs','sidebar-package/cordis.patch.yml']) assert.ok(files.has(name),name);
   assert.ok(![...files.keys()].some(name => name.startsWith('compat/')), 'SDK compatibility source must not enter the main npm package');
   assert.match(files.get('sidebar-client.js').toString('utf8'), /sidebar\.workspaces\.header\.action/);
   assert.doesNotMatch(files.get('sidebar-client.js').toString('utf8'), /conversation\.chat\.turnTail|subprocess\.spawn|querySelector|MutationObserver/);
@@ -73,7 +73,7 @@ test('real archive has version 0.3.0, both complete locales and all 100 icons wi
   const requirePacked = createRequire(pathToFileURL(resolve(unpacked, 'index.mjs')));
   assert.equal(requirePacked.resolve(`${pkg.name}/package.json`), resolve(unpacked, 'package.json'));
   assert.equal(requirePacked(`${pkg.name}/package.json`).description, pkg.description);
-  for (const topic of ['behavior', 'configuration', 'operations', 'alternatives', 'verification', 'images', 'completed-filter']) {
+  for (const topic of ['behavior', 'configuration', 'operations', 'alternatives', 'verification', 'images', 'completed-filter', 'unread-filter']) {
     for (const suffix of ['', '.zh-CN']) assert.ok(files.has(`docs/${topic}${suffix}.md`), topic + suffix);
   }
   for (const value of [5, 4]) {

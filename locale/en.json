@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "DSH Session Alerts",
-    "description": "DSH Session Alerts: completed-main-session workspace view (requires workspace extension API) and Windows native per-session unread-result count. Only the active, visible Chat result footer acknowledges its exact revision; foreground results still count. No toast, sound or focus stealing."
+    "description": "DSH Session Alerts: live unread workspace filtering (requires the workspace extension API) and a Windows native count of unread results or pending interactions. A ready, visible, focused native-read current main view or an exact Chat result footer acknowledges one terminal revision. No toast, sound or focus stealing."
   },
   "config": {
     "enabled": { "title": "Enabled", "description": "Enable the Windows helper. Disabling clears the overlay and stops the helper." },

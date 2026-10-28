@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 const root = new URL('../', import.meta.url);
-const sidebar = ['completion-contract.mjs','completion-reader.mjs','completed-filter.mjs','sidebar-messages.mjs','completed-sidebar.mjs'];
+const sidebar = ['unread-filter.mjs','sidebar-messages.mjs','completed-sidebar.mjs'];
 function source(name) {
   return readFileSync(new URL(name, root), 'utf8')
     .replace(/^import .+ from ['"][^'"]+['"];?\r?\n/gm, '')
@@ -19,8 +19,8 @@ for (const file of ['completion.mjs','completion-state.mjs','completion-contract
 for (const language of ['en','zh']) {
   const meta = JSON.parse(readFileSync(new URL(`locale/${language}.json`,root),'utf8')).meta;
   outputs.push([`sidebar-package/locale/${language}.json`,JSON.stringify({meta:{title:meta.title,description:language==='zh'
-    ? '已完成主会话侧栏筛选及只读完成投影；不启动Python或原生角标引擎。'
-    : 'Completed-main-session sidebar and read-only completion projection; no Python or native badge engine.'}},null,2)+'\n']);
+    ? '实时未读会话筛选；保留兼容完成投影，不启动Python或原生角标引擎。'
+    : 'Live unread-session filtering; retains the compatible completion projection without a Python or native badge engine.'}},null,2)+'\n']);
 }
 for (const [name, text] of outputs) {
   const output = new URL(name, root);

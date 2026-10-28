@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "DSH Session Alerts",
-    "description": "Completed-main-session sidebar and read-only completion projection; no Python or native badge engine."
+    "description": "Live unread-session filtering; retains the compatible completion projection without a Python or native badge engine."
   }
 }

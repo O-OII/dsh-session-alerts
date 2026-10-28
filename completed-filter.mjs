@@ -35,7 +35,7 @@ export function descendantActivity(byId, statuses) {
 }
 export function createCompletedFilter({ sessions, statuses, generation, classify,
   schedule = setTimeout, cancel = clearTimeout, now = Date.now, unknownRetryMs = 30000, batchSize = 100 }) {
-  let enabled = false, disposed = false, revision = 0, timer = null, request = null, activeRun = null, rerun = false;
+  let enabled = false, disposed = false, revision = 0, timer = null, request = null, activeRun = null, rerun = false, rerunForce = false;
   let observedGeneration = generation.getSnapshot(), lastSignature = '';
   const records = new Map(), listeners = new Set();
   let snapshot = { enabled: false, matchingSessionIds: new Set(), pendingSessionIds: new Set(), unknownSessionIds: new Set() };
@@ -59,7 +59,7 @@ export function createCompletedFilter({ sessions, statuses, generation, classify
     if (enabled) for (const row of inputs()) {
       if (row.busy) continue;
       const record = records.get(row.id);
-      if (loading.has(row.id) && (!record || record.stamp !== row.stamp)) pendingSessionIds.add(row.id);
+      if (loading.has(row.id) && (!record || record.stamp !== row.stamp || record.state === 'unknown')) pendingSessionIds.add(row.id);
       else if (!record || record.stamp !== row.stamp || record.state === 'unknown') unknownSessionIds.add(row.id);
       else if (record.state === 'completed') matchingSessionIds.add(row.id);
     }
@@ -69,7 +69,9 @@ export function createCompletedFilter({ sessions, statuses, generation, classify
   const source = { getSnapshot: () => snapshot, subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener); } };
   async function refresh(force = false) {
     if (disposed || !enabled) return;
-    if (activeRun) { rerun = true; return; }
+    // Explicit retry/re-enable may arrive between batches. Keep its force bit
+    // through ordinary invalidations instead of silently reusing cached results.
+    if (activeRun) { rerun = true; rerunForce ||= force; return; }
     cancel(timer); timer = null;
     const currentGeneration = generation.getSnapshot();
     if (!currentGeneration) { records.clear(); publish(); return; }
@@ -110,7 +112,9 @@ export function createCompletedFilter({ sessions, statuses, generation, classify
       }
     } finally {
       activeRun = null; request = null;
-      if (!disposed && enabled && rerun) { rerun = false; void refresh(); }
+      if (!disposed && enabled && rerun) {
+        const force = rerunForce; rerun = false; rerunForce = false; void refresh(force);
+      }
       else if (!disposed && enabled) {
         // Only unknown/error baselines retry on a bounded timer. Known cold logs
         // are NOT re-read every 1.5 seconds; live catalog/projection events dirty them.
@@ -136,7 +140,7 @@ export function createCompletedFilter({ sessions, statuses, generation, classify
     setEnabled(value) {
       value = Boolean(value);
       if (disposed || value === enabled) return;
-      enabled = value; ++revision; request?.abort(); cancel(timer); timer = null; rerun = false;
+      enabled = value; ++revision; request?.abort(); cancel(timer); timer = null; rerun = false; rerunForce = false;
       publish(); if (enabled) void refresh(true);
     },
     refresh: () => refresh(true),

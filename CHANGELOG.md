@@ -1,5 +1,22 @@
 # Changelog / 更新记录
 
+## Unreleased / 未发布
+
+- Replace the completed-only workspace control with a live **unread bell**: match only main sessions whose native `ctx.uiSession.sessionStatus` entry has `completionUnread === true`. Intersect with native search/archive visibility and other filters; status changes update the view without marking anything read. Completion, running, goals, pending interactions and historical logs do not infer unread. Retain the completed projection and old helpers for compatibility, disconnected from the bell.
+- Use explicit off/on Chinese hover labels **“未读过滤” / “重置条件”**, localized pressed/accessibility states and an unread-specific no-match message. Reset disables only this bell, preserving search and other conditions; an empty enabled filter remains live for later unread arrivals.
+- Accept current `TimelineTurn` objects and legacy numeric `conversation.chat.turnTail` props while continuing to obtain the authoritative turn-end sequence from the Chat timeline.
+- Add native-read synchronization only for the **current, ready, main-view-retained main session**, with visible/focused page and explicit native `completionUnread === false`. Require `blank === false` and a positive safe-integer main-view count; missing or malformed qualification never acknowledges a result. Fetch each pending terminal's exact Host revision/turn/end sequence and acknowledge by CAS without requiring an old footer to be scrolled into view. Do not sweep all false flags, acknowledge hidden/inactive/unknown sessions, or clear waiting interactions; invalidate stale evidence across view/lifecycle/connection changes.
+- Preserve queued explicit retry/re-enable force in the retained legacy completion-filter helper, and publish pending while an unknown baseline is being retried; the helper is not wired to the unread bell.
+- Clarify that badge totals still include pending interactions and can differ from native browser-memory sidebar unread, including while newer background work runs. Native unread follows the browser lifecycle and is not invented by replaying historical completion logs.
+- Stock rc.3 still lacks workspace extension API v1. Keep the local compatibility SDK on its fixed SHA-256 baseline; do not present it as an upstream API/release. Durable upgrades require a repaired package archive, pinned manifest/lockfile resolution and staged atomic replacement, not an in-place pnpm-store hardlink or `node_modules` client-bundle edit. Machine-local backup archives are not public release artifacts.
+- Add fake regressions for unread status changes, native workspace/search/archive composition, reset, both turn prop shapes, scoped native-read synchronization, revision/lifecycle races and waiting preservation. Personal-machine live checks are not public multi-environment release visual evidence; no new screenshot or test-total claim is made here. This entry does not declare a version release, npm publication, or live-profile deployment.
+- 中文：铃铛改为仅筛原生 `completionUnread === true` 的未读主会话，实时与搜索/归档/其他条件取交集，不清未读、不从完成历史推断；中文 hover 关闭“未读过滤”、开启“重置条件”，空态明确无匹配，重置只关本铃铛且保留搜索。完成投影和旧 helpers 仅作兼容，不接入铃铛。
+- 中文：修复 `turnTail` 对象/数字轮次兼容；增加当前 ready + retained 主会话的前台原生已读逐 revision CAS 同步，要求明确 `blank === false` 及正安全整数保留计数，缺失/异常不确认，不强制滚旧页脚、不遍历所有 false、不清 waiting；隐藏/未激活/未知状态不能凭空全局 ack。角标仍统计待处理交互，与 browser 生命周期的原生侧栏内存未读并不保证完全一致。固定基线本地 SDK 不冒称上游官方已有 API；持久升级须修复归档、固定 manifest/lock、原子替换，避免原地改写 pnpm store 硬链接。补充 fake 回归，个人本机 live 不充当公开多环境视觉验收；暂不声明版本发布、不 npm 发布、不操作现用 profile。
+
+The 0.3.0 completed-only entries below describe historical source preparation; the current bell follows the Unreleased unread semantics above.
+
+以下 0.3.0 的只看已完成记录保留历史源码准备事实；当前铃铛以上述 Unreleased 未读语义为准。
+
 ## 0.3.0 — 2026-10-27 (source prepared; deployment is a separate operator action)
 
 - Rename the product to **DSH会话提醒 / DSH Session Alerts** and repository metadata to `dsh-session-alerts`; preserve the technical npm/settings/native contribution identity.

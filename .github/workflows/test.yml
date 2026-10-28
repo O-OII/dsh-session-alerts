@@ -55,4 +55,4 @@ jobs:
       - name: Build hash-pinned portable compatibility artifact
         run: node compat/workspace-sdk/scripts/build.mjs
       - name: Verify native tree, search and filter composition
-        run: node --test compat/workspace-sdk/test/sdk.test.mjs
+        run: node --test compat/workspace-sdk/test/*.test.mjs

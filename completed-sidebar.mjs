@@ -1,63 +1,56 @@
-/** Official workspace-slot/filter contribution. No DOM discovery or hiding. */
+/** Native workspace-slot contribution. File name retained for source compatibility;
+ * the bell now filters unread sessions, never completed-session projections.
+ */
 import { createElement } from 'react';
-import { createCompletedFilter, FILTER_ID } from './completed-filter.mjs';
-import { createCompletionReader } from './completion-reader.mjs';
+import { createUnreadFilter, UNREAD_FILTER_ID } from './unread-filter.mjs';
 import { SIDEBAR_NAMESPACE, sidebarMessages } from './sidebar-messages.mjs';
 const buttonStyle = { width: 28, height: 28, flex: '0 0 auto', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   border: 0, borderRadius: 6, cursor: 'pointer', outlineOffset: 2, padding: 0 };
-export function CompletedFilterButton({ wide = true, useCompletedFilter, setCompletedFilterEnabled, t }) {
-  const enabled = useCompletedFilter(state => state.enabled);
-  return createElement('button', { type: 'button', 'aria-label': t('toggle'), 'aria-pressed': enabled,
-    title: t(enabled ? 'disableTooltip' : 'enableTooltip'), onClick: () => setCompletedFilterEnabled(!enabled),
+export function UnreadFilterButton({ wide = true, useUnreadFilter, setUnreadFilterEnabled, t }) {
+  const enabled = useUnreadFilter(state => state.enabled);
+  return createElement('button', { type: 'button', 'aria-label': t(enabled ? 'disableTooltip' : 'enableTooltip'), 'aria-pressed': enabled,
+    title: t(enabled ? 'disableTooltip' : 'enableTooltip'), onClick: () => setUnreadFilterEnabled(!enabled),
     style: { ...buttonStyle, width: wide ? 28 : 36, height: wide ? 28 : 36,
       color: enabled ? 'var(--dsw-alias-state-business-primary, #3485ed)' : 'var(--dsw-alias-label-secondary, currentColor)',
       background: enabled ? 'var(--dsw-alias-interactive-bg-hover, rgba(52,133,237,.12))' : 'transparent' } },
-    createElement('svg', { width: 17, height: 17, viewBox: '0 0 20 20', fill: 'none', 'aria-hidden': true },
-      createElement('circle', { cx: 10, cy: 10, r: 7.2, stroke: 'currentColor', strokeWidth: 1.5 }),
-      createElement('path', { d: 'm6.2 10 2.4 2.5 5.2-5.3', stroke: 'currentColor', strokeWidth: 1.7, strokeLinecap: 'round', strokeLinejoin: 'round' })));
+    createElement('svg', { width: 16, height: 16, viewBox: '0 0 16 16', fill: 'none',
+      stroke: 'currentColor', strokeWidth: 1, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+      createElement('path', { d: 'M6.5 13a1.5 1.5 0 0 0 3 0M3 11.5h10l-1.25-1.75V6a3.75 3.75 0 0 0-7.5 0v3.75L3 11.5ZM8 1.25v1' })));
 }
-export function CompletedFilterStatus({ active, visibleCount, pendingCount = 0, unknownCount = 0,
-  useCompletedFilter, setCompletedFilterEnabled, retryCompletedFilter, unavailable = false, t }) {
+export function UnreadFilterStatus({ active, visibleCount, useUnreadFilter, setUnreadFilterEnabled, unavailable = false, t }) {
   if (unavailable) return createElement('div', { role: 'status', style: { padding: '8px 12px', fontSize: 12 } }, t('unavailable'));
-  const enabled = useCompletedFilter(state => state.enabled);
-  if (!enabled || !active || visibleCount > 0 && pendingCount === 0 && unknownCount === 0) return null;
-  const rows = [];
-  if (pendingCount > 0) rows.push(createElement('div', { key: 'pending' }, t('loading', { count: pendingCount })));
-  if (unknownCount > 0) rows.push(createElement('div', { key: 'unknown' }, t('unknown', { count: unknownCount })));
-  if (visibleCount === 0 && pendingCount === 0) rows.push(createElement('div', { key: 'empty' }, t('empty')));
-  rows.push(createElement('button', { key: 'clear', type: 'button', onClick: () => setCompletedFilterEnabled(false),
-    style: { marginTop: 6, cursor: 'pointer' } }, t('clear')));
-  if (unknownCount > 0) rows.push(createElement('button', { key: 'retry', type: 'button', onClick: retryCompletedFilter,
-    style: { marginTop: 6, marginLeft: 6, cursor: 'pointer' } }, t('retry')));
+  const enabled = useUnreadFilter(state => state.enabled);
+  if (!enabled || !active || visibleCount > 0) return null;
   return createElement('div', { role: 'status', 'aria-live': 'polite',
-    style: { padding: '8px 12px', fontSize: 12, color: 'var(--dsw-alias-label-secondary, currentColor)' } }, ...rows);
+    style: { padding: '8px 12px', fontSize: 12, color: 'var(--dsw-alias-label-secondary, currentColor)' } },
+    createElement('div', null, t('empty')),
+    createElement('button', { type: 'button', onClick: () => setUnreadFilterEnabled(false),
+      style: { marginTop: 6, cursor: 'pointer' } }, t('clear')));
 }
-export function applyCompletedSidebar(ctx) {
-  ctx.effect(() => ctx.locale.register(SIDEBAR_NAMESPACE, sidebarMessages), 'session alerts: sidebar dictionaries');
+export function applyUnreadSidebar(ctx) {
+  ctx.effect(() => ctx.locale.register(SIDEBAR_NAMESPACE, sidebarMessages), 'session alerts: unread sidebar dictionaries');
   const api = ctx.uiWorkspace.sessionFilters;
   if (api?.apiVersion !== 1 || typeof api.register !== 'function') {
-    ctx.logger?.warn?.('DSH Session Alerts: completed-session workspace API unavailable; no fake toggle mounted.');
+    ctx.logger?.warn?.('DSH Session Alerts: unread workspace API unavailable; no fake toggle mounted.');
     ctx.slots.inject('sidebar.workspaces.filter.status', () => ctx.slots.register({
-      name: 'sidebar.workspaces.filter.status', id: `${FILTER_ID}.unavailable`, locale: SIDEBAR_NAMESPACE,
+      name: 'sidebar.workspaces.filter.status', id: `${UNREAD_FILTER_ID}.unavailable`, locale: SIDEBAR_NAMESPACE,
       inject: () => ({ unavailable: true }),
-    }, CompletedFilterStatus));
+    }, UnreadFilterStatus));
     return;
   }
   ctx.effect(() => {
-    const model = createCompletedFilter({ sessions: ctx.sessions.list, statuses: ctx.uiSession.sessionStatus,
-      generation: ctx.connection.generation, classify: createCompletionReader(ctx.remote) });
+    const model = createUnreadFilter({ sessions: ctx.sessions.list, statuses: ctx.uiSession.sessionStatus });
     let removeFilter, removeHeader, removeStatus;
     try {
-      removeFilter = api.register({ id: FILTER_ID, source: model.source });
-      const injected = () => ({ hooks: { completedFilter: model.source },
-        setCompletedFilterEnabled: value => model.setEnabled(value), retryCompletedFilter: () => model.refresh() });
+      removeFilter = api.register({ id: UNREAD_FILTER_ID, source: model.source });
+      const injected = () => ({ hooks: { unreadFilter: model.source }, setUnreadFilterEnabled: value => model.setEnabled(value) });
       removeHeader = ctx.slots.inject('sidebar.workspaces.header.action', () => ctx.slots.register({
-        name: 'sidebar.workspaces.header.action', id: FILTER_ID, order: 50, locale: SIDEBAR_NAMESPACE, inject: injected,
-      }, CompletedFilterButton));
+        name: 'sidebar.workspaces.header.action', id: UNREAD_FILTER_ID, order: 50, locale: SIDEBAR_NAMESPACE, inject: injected,
+      }, UnreadFilterButton));
       removeStatus = ctx.slots.inject('sidebar.workspaces.filter.status', () => ctx.slots.register({
-        name: 'sidebar.workspaces.filter.status', id: FILTER_ID, order: 50, locale: SIDEBAR_NAMESPACE, inject: injected,
-      }, CompletedFilterStatus));
+        name: 'sidebar.workspaces.filter.status', id: UNREAD_FILTER_ID, order: 50, locale: SIDEBAR_NAMESPACE, inject: injected,
+      }, UnreadFilterStatus));
     } catch (error) { model.dispose(); removeFilter?.(); removeHeader?.(); removeStatus?.(); throw error; }
     return () => { model.dispose(); removeHeader?.(); removeStatus?.(); removeFilter?.(); };
-  }, 'session alerts: independent completed-session sidebar');
+  }, 'session alerts: live unread-session sidebar');
 }

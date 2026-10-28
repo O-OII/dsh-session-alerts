@@ -21,11 +21,11 @@ export function createBridge(controller, isDisposed = () => false) {
     }
     if (endpoint === 'pending') return { ok: true, value: controller.pendingFor(payload.sessionId) };
     if (endpoint !== 'read') return failure('badge/not-found', 'Unknown badge operation.');
-    // Only the actual rendered result-tail bridge acknowledges terminal results.
-    // Waiting interactions clear on their real answer/decision, never on session open.
+    // A qualified native-read current view or exact visible result footer may
+    // acknowledge a terminal revision. Waiting clears only on real resolution.
     if (payload.kind !== 'terminal' || typeof payload.revision !== 'string' || payload.revision.length > 128 ||
         !Number.isSafeInteger(payload.turn) || payload.turn < 0 || !Number.isSafeInteger(payload.eventSeq) || payload.eventSeq < 0) {
-      return failure('badge/bad-request', 'Expected an exact rendered result revision.');
+      return failure('badge/bad-request', 'Expected an exact terminal result revision.');
     }
     return { ok: true, value: { accepted: controller.acknowledge(payload) } };
   };

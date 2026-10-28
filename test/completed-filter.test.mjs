@@ -7,13 +7,13 @@ const tick=()=>new Promise(resolve=>setImmediate(resolve));
 function source(value){const listeners=new Set();return{getSnapshot:()=>value,subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},set(next){value=next;for(const fn of listeners)fn();},listeners};}
 function summary(id,extra={}){return{id,updatedAt:1,running:false,blank:false,...extra};}
 function wire(state='completed',extra={}){return{version:1,state,main:true,turn:1,eventSeq:2,goalPhaseAtEnd:'none',goalIdAtEnd:null,droppedUnrun:false,...extra};}
-function fixture(rows=[summary('a')],states={a:'completed'}){
+function fixture(rows=[summary('a')],states={a:'completed'},options={}){
   const sessions=source({ids:rows.map(row=>row.id),byId:Object.fromEntries(rows.map(row=>[row.id,row]))});
   const statuses=source(new Map()),generation=source({id:1}),calls=[],timers=new Map();let timerId=0;
   const fixture={sessions,statuses,generation,calls,timers,states,handler:null};
   const model=createCompletedFilter({sessions,statuses,generation,now:()=>1000,
     classify:async(ids,signal)=>{calls.push([...ids]);if(fixture.handler)return fixture.handler(ids,signal);return{ok:true,value:{sessions:ids.map(sessionId=>({sessionId,state:states[sessionId]??'unknown'}))}};},
-    schedule(fn,delay){const id=++timerId;timers.set(id,{fn,delay});return id;},cancel(id){timers.delete(id);}});
+    schedule(fn,delay){const id=++timerId;timers.set(id,{fn,delay});return id;},cancel(id){timers.delete(id);},...options});
   return{...fixture,model,get snapshot(){return model.source.getSnapshot();},setRows(rows){sessions.set({ids:rows.map(row=>row.id),byId:Object.fromEntries(rows.map(row=>[row.id,row]))});},
     setHandler(fn){fixture.handler=fn;},close(){model.dispose();assert.equal(timers.size,0);assert.equal(sessions.listeners.size,0);assert.equal(statuses.listeners.size,0);assert.equal(generation.listeners.size,0);}};
 }
@@ -77,6 +77,43 @@ test('known cold baselines are cached; unrelated list/retention changes do not r
 test('disabled filter stops requests/timers; explicit re-enable refreshes only by user action',async()=>{
   const f=fixture();try{f.model.setEnabled(true);await tick();f.model.setEnabled(false);f.setRows([summary('a',{updatedAt:9})]);await tick();assert.equal(f.calls.length,1);
     f.model.setEnabled(true);await tick();assert.equal(f.calls.length,2);
+  }finally{f.close();}
+});
+test('retrying an unchanged unknown baseline publishes pending until its authority responds',async()=>{
+  const f=fixture([summary('a')],{a:'unknown'});let release;
+  try{f.model.setEnabled(true);await tick();assert.equal(f.snapshot.unknownSessionIds.has('a'),true);
+    assert.equal(f.timers.size,1);
+    f.setHandler(async()=>new Promise(resolve=>{release=()=>resolve({ok:true,value:{sessions:[{sessionId:'a',state:'completed'}]}});}));
+    const retry=f.model.refresh();assert.equal(f.snapshot.pendingSessionIds.has('a'),true);
+    assert.equal(f.snapshot.unknownSessionIds.has('a'),false);assert.equal(f.timers.size,0);
+    release();await retry;assert.deepEqual([...f.snapshot.matchingSessionIds],['a']);
+    assert.equal(f.snapshot.pendingSessionIds.size,0);assert.equal(f.snapshot.unknownSessionIds.size,0);
+  }finally{f.close();}
+});
+test('explicit retry queued during a later batch preserves force for an earlier unknown result',async()=>{
+  const f=fixture([summary('a'),summary('b')],{a:'unknown',b:'completed'},{batchSize:1});let release;
+  f.setHandler(async(ids)=>{
+    if(ids[0]==='b'&&f.calls.length===2)return new Promise(resolve=>{release=()=>resolve({ok:true,value:{sessions:[{sessionId:'b',state:'completed'}]}});});
+    return {ok:true,value:{sessions:ids.map(sessionId=>({sessionId,state:f.states[sessionId]}))}};
+  });
+  try{f.model.setEnabled(true);await tick();assert.deepEqual(f.calls,[['a'],['b']]);
+    assert.equal(f.snapshot.unknownSessionIds.has('a'),true);assert.equal(f.snapshot.pendingSessionIds.has('b'),true);
+    f.states.a='completed';void f.model.refresh();release();await tick();
+    assert.deepEqual(f.calls,[['a'],['b'],['a'],['b']]);
+    assert.deepEqual([...f.snapshot.matchingSessionIds],['a','b']);assert.equal(f.timers.size,0);
+  }finally{f.close();}
+});
+test('disable and re-enable during an aborted later batch revalidates earlier cached results',async()=>{
+  const f=fixture([summary('a'),summary('b')],{a:'completed',b:'completed'},{batchSize:1});let release,oldSignal;
+  f.setHandler(async(ids,signal)=>{
+    if(ids[0]==='b'&&f.calls.length===2){oldSignal=signal;return new Promise(resolve=>{release=()=>resolve({ok:true,value:{sessions:[{sessionId:'b',state:'completed'}]}});});}
+    return {ok:true,value:{sessions:ids.map(sessionId=>({sessionId,state:f.states[sessionId]}))}};
+  });
+  try{f.model.setEnabled(true);await tick();assert.equal(f.snapshot.matchingSessionIds.has('a'),true);
+    f.model.setEnabled(false);assert.equal(oldSignal.aborted,true);f.states.a='error';f.model.setEnabled(true);
+    // Ordinary invalidation while queued must not downgrade the explicit force.
+    f.setRows([summary('a'),summary('b',{updatedAt:2})]);release();await tick();
+    assert.deepEqual(f.calls,[['a'],['b'],['a'],['b']]);assert.deepEqual([...f.snapshot.matchingSessionIds],['b']);
   }finally{f.close();}
 });
 test('disconnect/reconnect invalidates the previous generation and unknown transport data is excluded',async()=>{

@@ -1,7 +1,7 @@
 {
   "name": "dsh-native-taskbar-badge",
   "version": "0.3.0",
-  "description": "DSH会话提醒 / DSH Session Alerts：主会话已完成侧栏筛选与逐会话未读提醒；Windows 原生 COM 任务栏数字角标；不弹窗、不响铃、不抢焦点、不修改 ASAR。",
+  "description": "DSH会话提醒 / DSH Session Alerts：实时未读会话过滤与逐会话已读同步；Windows 原生 COM 任务栏数字角标；不弹窗、不响铃、不抢焦点、不修改 ASAR。",
   "license": "MIT",
   "author": "O-OII contributors",
   "type": "module",
@@ -38,6 +38,7 @@
     "completion-contract.mjs",
     "completion-reader.mjs",
     "completed-filter.mjs",
+    "unread-filter.mjs",
     "completed-sidebar.mjs",
     "sidebar-messages.mjs",
     "sidebar-client.mjs",

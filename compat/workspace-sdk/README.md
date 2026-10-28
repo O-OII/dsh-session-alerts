@@ -17,7 +17,7 @@ From this builder directory:
 
 ```powershell
 node scripts/build.mjs
-node --test test/sdk.test.mjs
+node --test test/*.test.mjs
 ```
 
 The builder uses its bundled `vendor/ui-workspace` baseline by default, so the
